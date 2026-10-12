@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#FFF8F8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#191113" media="(prefers-color-scheme: dark)">
 <title>Planazo Madrid</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23FFD9E0'/%3E%3Crect x='16' y='18' width='32' height='30' rx='8' fill='%238F4A5C'/%3E%3Ccircle cx='32' cy='34' r='6' fill='%23FFD9E0'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23FFD9E0'/%3E%3Cpath d='M16 5c6-3 12 1 12 6-6 1-11-2-12-6ZM16 5c-6-3-12 1-12 6 6 1 11-2 12-6Z' fill='%233E7B4F'/%3E%3Ccircle cx='11' cy='18.5' r='6' fill='%23C2273A'/%3E%3Ccircle cx='21.5' cy='17.5' r='6' fill='%23C2273A'/%3E%3Ccircle cx='16' cy='25' r='5.5' fill='%23C2273A'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..1000&display=swap">
@@ -20,6 +20,7 @@
   --surface:#FFF8F8;--surface-low:#FFF0F2;--surface-c:#FAEAEC;--surface-high:#F4E4E6;--surface-highest:#EEDEE0;
   --on-surface:#22191B;--on-surface-var:#524346;--outline:#847376;--outline-var:#D6C2C5;
   --inverse-surface:#382E30;--inverse-on:#FDEDEF;--scrim:rgba(34,25,27,.42);
+  --leaf:#3E7B4F;--berry:#C2273A;--sun:#FF9F7A;
   --font:"Roboto Flex",Roboto,system-ui,-apple-system,"Segoe UI",sans-serif;
   --cat-musica-bg:#E8DEFF;--cat-musica-fg:#21005D;--cat-musica-dot:#6750A4;
   --cat-escena-bg:#FFD8E4;--cat-escena-fg:#31111D;--cat-escena-dot:#984061;
@@ -39,6 +40,7 @@
   --surface:#191113;--surface-low:#22191B;--surface-c:#261D1F;--surface-high:#31282A;--surface-highest:#3C3234;
   --on-surface:#EFDFE1;--on-surface-var:#D6C2C5;--outline:#9F8C8F;--outline-var:#524346;
   --inverse-surface:#EFDFE1;--inverse-on:#382E30;--scrim:rgba(0,0,0,.6);
+  --leaf:#8FD8A6;--berry:#FF8A8F;--sun:#F6E388;
   --cat-musica-bg:#4F378B;--cat-musica-fg:#E8DEFF;--cat-musica-dot:#D0BCFF;
   --cat-escena-bg:#633B48;--cat-escena-fg:#FFD8E4;--cat-escena-dot:#FFB0C9;
   --cat-cine-bg:#1F4876;--cat-cine-fg:#D3E4FF;--cat-cine-dot:#A2C9FF;
@@ -57,6 +59,7 @@
   --surface:#191113;--surface-low:#22191B;--surface-c:#261D1F;--surface-high:#31282A;--surface-highest:#3C3234;
   --on-surface:#EFDFE1;--on-surface-var:#D6C2C5;--outline:#9F8C8F;--outline-var:#524346;
   --inverse-surface:#EFDFE1;--inverse-on:#382E30;--scrim:rgba(0,0,0,.6);
+  --leaf:#8FD8A6;--berry:#FF8A8F;--sun:#F6E388;
   --cat-musica-bg:#4F378B;--cat-musica-fg:#E8DEFF;--cat-musica-dot:#D0BCFF;
   --cat-escena-bg:#633B48;--cat-escena-fg:#FFD8E4;--cat-escena-dot:#FFB0C9;
   --cat-cine-bg:#1F4876;--cat-cine-fg:#D3E4FF;--cat-cine-dot:#A2C9FF;
@@ -90,7 +93,7 @@ main{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:0 120px}
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);padding-block:14px 10px;display:flex;flex-direction:column;gap:12px}
 .brand{display:flex;align-items:center;gap:12px}
 .logo{width:44px;height:44px;border-radius:14px;background:var(--primary-container);color:var(--on-primary-container);display:grid;place-items:center;transform:rotate(-6deg)}
-.logo .ms{font-size:26px}
+.madrono .lf{fill:var(--leaf)}.madrono .lf2{opacity:.75}.madrono .bry{fill:var(--berry)}.madrono .hl{fill:#fff;opacity:.5}
 .brand h1{margin:0;font-size:24px;line-height:1.1;font-weight:800;font-variation-settings:"wdth" 118,"opsz" 40;letter-spacing:-.01em}
 .brand p{margin:2px 0 0;font-size:12.5px;color:var(--on-surface-var)}
 .search{display:flex;align-items:center;gap:10px;height:52px;padding:0 6px 0 16px;border-radius:28px;background:var(--surface-high);color:var(--on-surface-var)}
@@ -141,8 +144,21 @@ main{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:0 120px}
 .hero .stats{display:flex;gap:10px;flex-wrap:wrap}
 .stat{display:inline-flex;align-items:center;gap:6px;padding:6px 12px 6px 10px;border-radius:999px;background:var(--surface);color:var(--on-surface);font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums}
 .stat .ms{font-size:18px;color:var(--primary)}
-.blob{position:absolute;right:-30px;top:-30px;width:150px;height:150px;opacity:.5;pointer-events:none}
-.blob path{fill:var(--surface)}
+.hero{padding-bottom:0}
+.hero > :not(svg){position:relative;z-index:1}
+.stars{position:absolute;top:18px;right:18px;width:58px;height:auto;fill:currentColor;opacity:.32}
+.skyline{display:block;width:calc(100% + 40px);height:auto;margin:6px -20px 0;color:var(--on-primary-container)}
+.skyline .front{fill:currentColor;opacity:.92}
+.skyline .back{fill:currentColor;opacity:.2}
+.skyline .holes{fill:var(--primary-container)}
+.skyline .caps{fill:var(--berry)}
+.skyline .sun{fill:var(--sun)}
+@media (min-width:700px){
+  .hero{padding-bottom:22px;min-height:210px}
+  .hero h2{max-width:13ch}
+  .skyline{position:absolute;right:0;bottom:0;width:min(440px,52%);margin:0}
+  .stars{top:22px;right:30px;width:64px}
+}
 
 /* Event cards */
 .list{display:grid;gap:8px}
@@ -268,7 +284,7 @@ dialog#sheet::backdrop{background:var(--scrim)}
 <main>
   <header class="top">
     <div class="brand">
-      <div class="logo" aria-hidden="true"><span class="ms fill">local_activity</span></div>
+      <div class="logo" aria-hidden="true"><svg viewBox="0 0 32 32" width="30" height="30" class="madrono"><path class="lf" d="M16 5c6-3 12 1 12 6-6 1-11-2-12-6Z"/><path class="lf lf2" d="M16 5c-6-3-12 1-12 6 6 1 11-2 12-6Z"/><path class="lf" d="M15.4 5h1.2v6h-1.2Z"/><circle class="bry" cx="11" cy="18.5" r="6"/><circle class="bry" cx="21.5" cy="17.5" r="6"/><circle class="bry" cx="16" cy="25" r="5.5"/><circle class="hl" cx="9" cy="16.5" r="1.6"/><circle class="hl" cx="19.5" cy="15.5" r="1.6"/><circle class="hl" cx="14.2" cy="23.2" r="1.4"/></svg></div>
       <div><h1>Planazo</h1><p id="status">Qué pasa en Madrid, día a día</p></div>
     </div>
     <label class="search"><span class="ms">search</span>
@@ -307,6 +323,8 @@ const CAT=Object.fromEntries(CATS.map(c=>[c.id,c]));
 const DISTRICTS={centro:'Centro',arganzuela:'Arganzuela',retiro:'Retiro',salamanca:'Salamanca',chamartin:'Chamartín',tetuan:'Tetuán',chamberi:'Chamberí',fuencarralelpardo:'Fuencarral-El Pardo',moncloaaravaca:'Moncloa-Aravaca',latina:'Latina',carabanchel:'Carabanchel',usera:'Usera',puentedevallecas:'Puente de Vallecas',moratalaz:'Moratalaz',ciudadlineal:'Ciudad Lineal',hortaleza:'Hortaleza',villaverde:'Villaverde',villadevallecas:'Villa de Vallecas',vicalvaro:'Vicálvaro',sanblascanillejas:'San Blas-Canillejas',barajas:'Barajas'};
 const DIST_LIST=Object.values(DISTRICTS).sort((a,b)=>a.localeCompare(b,'es'));
 const WD_NAME=['domingos','lunes','martes','miércoles','jueves','viernes','sábados'];
+const SKYLINE='<svg class="skyline" viewBox="0 0 400 120" preserveAspectRatio="xMaxYMax meet" aria-hidden="true"><circle class="sun" cx="240" cy="30" r="13"/><g class="back"><path d="M0 120V98h20v22Zm112 0V90h22v30Zm54 0V96h16v24Zm14 0V84h18v36Zm52 0v-20h24v20Zm50 0V92h18v28Zm104 0V96h8v24Zm6 0V88h8v32Z"/></g><g class="front"><path d="M16 120V82h100v38Z"/><rect x="40" y="70" width="52" height="12" rx="1"/><rect x="58" y="62" width="16" height="8" rx="2"/><rect x="134" y="74" width="32" height="46"/><rect x="130" y="66" width="40" height="8" rx="2"/><rect x="138" y="54" width="24" height="12"/><path d="M138 54a12 12 0 0 1 24 0Z"/><rect x="148.5" y="34" width="3" height="8"/><path d="M143 33l7 3 7-3-7-2Z"/><path d="M200 120h18l10-74h-18Z"/><path d="M262 120h18l-10-74h-18Z"/><rect x="300" y="26" width="16" height="94"/><path d="M322 120V42a7 7 0 0 1 14 0v78Z"/><path d="M342 120V30l16-10v100Z"/><path d="M364 120V34l4-4h8l4 4v86Z"/></g><g class="holes"><path d="M56 120v-18a10 10 0 0 1 20 0v18Zm-25 0v-13a7 7 0 0 1 14 0v13Zm56 0v-13a7 7 0 0 1 14 0v13ZM20 120v-16h6v16Zm86 0v-16h6v16ZM304 42v-8a4 4 0 0 1 8 0v8Z"/></g><g class="caps"><path d="M210 46h18l-1 7h-18Zm42 0h18l1 7h-18Z"/></g></svg>';
+const STARS='<svg class="stars" viewBox="0 0 70 34" aria-hidden="true"><path transform="translate(9 9) scale(.6)" d="M0 -10L2.47 -3.4L9.51 -3.09L3.99 1.3L5.88 8.09L0 4.2L-5.88 8.09L-3.99 1.3L-9.51 -3.09L-2.47 -3.4Z"/><path transform="translate(26 9) scale(.6)" d="M0 -10L2.47 -3.4L9.51 -3.09L3.99 1.3L5.88 8.09L0 4.2L-5.88 8.09L-3.99 1.3L-9.51 -3.09L-2.47 -3.4Z"/><path transform="translate(43 9) scale(.6)" d="M0 -10L2.47 -3.4L9.51 -3.09L3.99 1.3L5.88 8.09L0 4.2L-5.88 8.09L-3.99 1.3L-9.51 -3.09L-2.47 -3.4Z"/><path transform="translate(60 9) scale(.6)" d="M0 -10L2.47 -3.4L9.51 -3.09L3.99 1.3L5.88 8.09L0 4.2L-5.88 8.09L-3.99 1.3L-9.51 -3.09L-2.47 -3.4Z"/><path transform="translate(17.5 25) scale(.6)" d="M0 -10L2.47 -3.4L9.51 -3.09L3.99 1.3L5.88 8.09L0 4.2L-5.88 8.09L-3.99 1.3L-9.51 -3.09L-2.47 -3.4Z"/><path transform="translate(34.5 25) scale(.6)" d="M0 -10L2.47 -3.4L9.51 -3.09L3.99 1.3L5.88 8.09L0 4.2L-5.88 8.09L-3.99 1.3L-9.51 -3.09L-2.47 -3.4Z"/><path transform="translate(51.5 25) scale(.6)" d="M0 -10L2.47 -3.4L9.51 -3.09L3.99 1.3L5.88 8.09L0 4.2L-5.88 8.09L-3.99 1.3L-9.51 -3.09L-2.47 -3.4Z"/></svg>';
 const SLOTS=[{id:'manana',name:'Mañana',icon:'wb_twilight'},{id:'tarde',name:'Tarde',icon:'wb_sunny'},{id:'noche',name:'Noche',icon:'dark_mode'}];
 
 /* ---------- utils ---------- */
@@ -486,10 +504,10 @@ function renderParaTi(){
   const todayMine=todayAll.filter(matchesPrefs);
   const freeToday=todayMine.filter(e=>e.free).length;
   const hasPrefs=p.cats.length||p.districts.length||p.slots.length||p.freeOnly||p.kids;
-  let h=`<div class="hero"><svg class="blob" viewBox="0 0 200 200" aria-hidden="true"><path d="M100 8c14 0 18 14 30 18s26-4 34 6 0 24 6 36 20 18 18 32-18 16-22 28 4 26-6 34-24 0-36 6-18 20-32 18-16-18-28-22-26 4-34-6 0-24-6-36-20-18-18-32 18-16 22-28-4-26 6-34 24 0 36-6S86 8 100 8z"/></svg>
+  let h=`<div class="hero">${STARS}
     <span class="eyebrow">${esc(fmtLong.format(t))}</span>
     <h2>${state.q?'Resultados para «'+esc(state.q)+'»':(hasPrefs?'Tus planes en Madrid':'Qué pasa hoy en Madrid')}</h2>
-    <div class="stats"><span class="stat"><span class="ms">event</span>${nf.format(todayMine.length)} planes hoy</span><span class="stat"><span class="ms">redeem</span>${nf.format(freeToday)} gratis</span>${state.saved.size?`<span class="stat"><span class="ms fill">bookmark</span>${state.saved.size} guardados</span>`:''}</div></div>`;
+    <div class="stats"><span class="stat"><span class="ms">event</span>${nf.format(todayMine.length)} planes hoy</span><span class="stat"><span class="ms">redeem</span>${nf.format(freeToday)} gratis</span>${state.saved.size?`<span class="stat"><span class="ms fill">bookmark</span>${state.saved.size} guardados</span>`:''}</div>${SKYLINE}</div>`;
   if(!hasPrefs&&!state.q){h+=`<div class="sec"><div class="banner"><span class="ms">tune</span><p><b>Dime qué te gusta</b> y ordeno la agenda por ti: tipos de plan, tus barrios y a qué hora te viene bien.</p><button class="btn tonal" data-act="view" data-v="prefs">Elegir</button></div></div>`}
 
   // saved upcoming
