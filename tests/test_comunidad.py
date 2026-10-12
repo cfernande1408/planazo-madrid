@@ -6,6 +6,7 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import comunidad  # noqa: E402
 import fetch_agenda  # noqa: E402
@@ -35,6 +36,11 @@ GETAFE_NEGRO = f"""<html><head><title>x</title>
 <p>Jóvenes y adultos</p>
 </body></html>"""
 
+RELATED = """<h2>Etiquetas</h2><a>Agenda cultural</a>
+<h2>También te puede interesar</h2>
+<div><a>Taller monográfico familiar: ALAS Y SUSURROS II</a><span>Educativa/Curso</span><time>Sábado, 17 Oct 2026 | 12:00</time></div>
+<footer><a>BOCM</a><a>RSS</a></footer>"""
+
 LA_CABRERA = f"""<html><head>
 <meta content="Acuarela experimental para jóvenes." property="og:description">
 </head><body>{NAV}
@@ -43,21 +49,26 @@ LA_CABRERA = f"""<html><head>
 <div>Ref: # 11023240</div>
 <h2>Información práctica</h2>
 <h3>Fechas y horarios</h3>
-<div>Sábado, 28 Nov 2026 | 10:00 - 12:30</div>
+<div><time>Sábado, 28 Nov 2026 | 10:00</time><span>-</span><time>12:30</time></div>
 <h3>Ubicación</h3>
 <div>Centro Comarcal de Humanidades Sierra Norte</div>
 <div>Av. de la Cabrera, 96, 28751 La Cabrera, Madrid, España</div>
-<div>Ver en el mapa</div>
-<p>Gratuita</p>
-<p>Actividad pública para chicos y chicas a partir de 10 años</p>
+<div>Transporte público disponible, autobuses interurbanos:</div>
+<div>líneas números</div><div>191</div><div>Madrid (Plaza Castilla) - Buitrago,</div>
+<a>Ver en el mapa</a>
+<p>Sábado 28 noviembre, 10.00 a 12.30 h</p>
+<p>¿Y si la hoja en blanco dejara de dar miedo?</p>
+<p>Actividad pública para chicos y chicas a partir de 10 años (adulto acompañante opcional). Gratuita.</p>
+<h3>Dirigido a</h3><p>Actividad pública para chicos y chicas a partir de 10 años (adulto acompañante opcional)</p>
+{RELATED}
 </body></html>"""
 
 VOLUNTARIADO = f"""<html><body>{NAV}
 <div>Tipo:</div><div>Curso</div><div>Ref: # 11023300</div>
 <h2>Información práctica</h2>
 <h3>Fechas y horarios</h3>
-<div>Lunes, 16 Nov 2026 | 17:00 - 20:00</div>
-<div>Miércoles, 18 Nov 2026 | 17:00 - 20:00</div>
+<div>Lunes, 16 Nov 2026 | 17:00</div><div>-</div><div>20:00</div>
+<div>Miércoles, 18 Nov 2026 | 17:00</div><div>-</div><div>20:00</div>
 <h3>Ubicación</h3>
 <div>Centro de Voluntariado</div><div>Plaza del Ayuntamiento, 1, 28760 Tres Cantos, Madrid</div>
 <p>Entrada: 2 euros en taquilla</p>
@@ -67,9 +78,15 @@ EXPO = f"""<html><body>{NAV}
 <div>Tipo:</div><div>Exposición</div><div>Ref: # 11023400</div>
 <h2>Información práctica</h2>
 <h3>Fechas y horarios</h3>
-<div>Del Martes, 06 Oct 2026 al Domingo, 20 Dic 2026 | 11:00 - 20:00</div>
+<div><time>Viernes, 20 Nov 2026 | 10:00</time><span>-</span><time>Viernes, 22 Ene 2027 | 21:30</time></div>
 <h3>Ubicación</h3>
-<div>Sala Canal de Isabel II</div><div>Calle Santa Engracia, 125</div><div>Madrid</div>
+<div>CCHSN</div><div>Av. de la Cabrera, 96, 28751 La Cabrera, Madrid, España</div>
+<div>CCHSN</div><div>Av. de la Cabrera, 96, 28751 La Cabrera, Madrid, España</div>
+<h4>Cómo llegar:</h4><div>Transporte público disponible</div>
+<a>Ver en el mapa</a>
+<p>Las obras recuerdan juegos de niños y la infancia perdida.</p>
+<p>Entrada: 3 euros, reducida 1,50 €</p>
+{RELATED}
 </body></html>"""
 
 RSS = b"""<?xml version="1.0" encoding="utf-8"?>
@@ -101,7 +118,9 @@ class PageTest(unittest.TestCase):
         self.assertEqual(ev["id"], "cam-11023240")
         self.assertEqual(ev["town"], "La Cabrera")
         self.assertEqual(ev["district"], "")
-        self.assertEqual(ev["time"], "10:00")
+        self.assertEqual((ev["start"], ev["end"], ev["time"]), ("2026-11-28", "2026-11-28", "10:00"))
+        self.assertEqual(ev["address"], "Av. de la Cabrera, 96, 28751 La Cabrera, Madrid")
+        self.assertEqual(ev["audience"], "Actividad pública para chicos y chicas a partir de 10 años (adulto acompañante opcional)")
         self.assertTrue(ev["free"])
         self.assertEqual(ev["price"], "Gratuita")
         self.assertTrue(ev["kids"])
@@ -112,14 +131,27 @@ class PageTest(unittest.TestCase):
         self.assertEqual([e["id"] for e in evs], ["cam-11023300-1", "cam-11023300-2"])
         self.assertEqual([e["start"] for e in evs], ["2026-11-16", "2026-11-18"])
         self.assertEqual(evs[0]["town"], "Tres Cantos")
+        self.assertEqual([e["end"] for e in evs], ["2026-11-16", "2026-11-18"])
+        self.assertEqual(evs[0]["time"], "17:00")
         self.assertEqual(evs[0]["price"], "Entrada: 2 euros en taquilla")
         self.assertFalse(evs[0]["free"])
 
-    def test_date_range_line(self):
-        [ev] = comunidad.parse_event_page(EXPO, "https://x/e", "Fotografía")
-        self.assertEqual((ev["start"], ev["end"]), ("2026-10-06", "2026-12-20"))
+    def test_range_with_end_on_its_own_line(self):
+        [ev] = comunidad.parse_event_page(EXPO, "https://x/e", "Atravesar mi piel")
+        self.assertEqual((ev["start"], ev["end"], ev["time"]), ("2026-11-20", "2027-01-22", "10:00"))
         self.assertEqual(ev["cat"], "expos")
-        self.assertEqual(ev["town"], "")
+        self.assertEqual(ev["venue"], "CCHSN")
+        self.assertEqual(ev["address"], "Av. de la Cabrera, 96, 28751 La Cabrera, Madrid")
+        self.assertEqual(ev["town"], "La Cabrera")
+        self.assertFalse(ev["kids"], "ni la descripción ni los relacionados cuentan")
+        self.assertFalse(ev["free"])
+        self.assertEqual(ev["price"], "Entrada: 3 euros, reducida 1,50 €")
+
+    def test_single_line_range(self):
+        html = EXPO.replace("<time>Viernes, 20 Nov 2026 | 10:00</time><span>-</span><time>Viernes, 22 Ene 2027 | 21:30</time>",
+                            "Del Martes, 06 Oct 2026 al Domingo, 20 Dic 2026 | 11:00 - 20:00")
+        [ev] = comunidad.parse_event_page(html, "u", "x")
+        self.assertEqual((ev["start"], ev["end"], ev["time"]), ("2026-10-06", "2026-12-20", "11:00"))
 
     def test_page_without_dates_is_skipped(self):
         self.assertEqual(comunidad.parse_event_page("<html><body>Nada</body></html>", "u"), [])

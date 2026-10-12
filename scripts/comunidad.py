@@ -36,11 +36,15 @@ MONTHS = {"ene": 1, "feb": 2, "mar": 3, "abr": 4, "may": 5, "jun": 6, "jul": 7,
 DATE_RE = re.compile(r"(\d{1,2})\s+(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)[a-z]*\.?\s+(\d{4})")
 TIME_RE = re.compile(r"\b(\d{1,2})[:.](\d{2})\b")
 POSTAL_RE = re.compile(r"\b28\d{3}\s+([^,\n]+)")
-FREE_RE = re.compile(r"^(gratuit|gratis|entrada libre|acceso libre|entrada gratuita)")
-PRICE_RE = re.compile(r"^(entradas?|precios?)\b\s*:?\s*\S")
+FREE_RE = re.compile(r"\bgratuit[ao]s?\b|\bgratis\b|entrada libre|acceso libre")
+PRICE_RE = re.compile(r"\d+(?:[.,]\d{1,2})?\s*(?:€|euros?\b)")
 KIDS_RE = re.compile(r"nin[oa]s|chicos y chicas|famili|infantil|bebes|a partir de \d+ anos")
+DASHES = {"-", "–", "—", "a", "al"}
 STOP_LABELS = {"ubicacion", "informacion practica", "fechas y horarios", "tipo", "compartir",
-               "ver en el mapa", "como llegar", "pertenece a"}
+               "ver en el mapa", "como llegar", "pertenece a", "dirigido a", "etiquetas",
+               "tambien te puede interesar"}
+# Tras estos encabezados ya no hay datos de la actividad (relacionados, pie).
+END_LABELS = {"etiquetas", "tambien te puede interesar"}
 
 
 # --------------------------------------------------------------------- RSS
@@ -100,24 +104,58 @@ def _dates(line: str) -> list[str]:
     return out
 
 
+def _hhmm(match: tuple[str, str]) -> str:
+    return f"{int(match[0]):02d}:{match[1]}"
+
+
+def _sessions(block: list[str]) -> list[dict]:
+    """Sesiones del bloque «Fechas y horarios».
+
+    El portal escribe el inicio, un «-» suelto y el fin, que puede ser solo una
+    hora («12:30») o fecha y hora («Viernes, 22 Ene 2027 | 21:30»). También
+    acepta todo en una línea («23 Oct 2026 | 12:00 - 13:30», «Del … al …»).
+    """
+    sessions: list[dict] = []
+    expect_end = False
+    for ln in block:
+        if _key(ln) in DASHES:
+            expect_end = True
+            continue
+        ds = _dates(ln)
+        if expect_end and sessions:
+            if ds:
+                sessions[-1]["end"] = max(ds)
+            expect_end = False
+            continue
+        if ds:
+            times = TIME_RE.findall(ln)
+            sessions.append({"start": min(ds), "end": max(ds), "time": _hhmm(times[0]) if times else ""})
+    return sessions
+
+
 def _location(block: list[str]) -> tuple[str, str, str, str]:
     """(lugar, dirección, distrito, municipio). Municipio vacío = Madrid capital."""
-    lines = [ln for ln in block if ln not in {".", ","}]
+    lines = list(dict.fromkeys(ln for ln in block if ln not in {".", ","}))
     venue = lines[0] if lines else ""
-    rest = lines[1:]
-    parts = (re.sub(r"(?i)^direcci[oó]n:\s*", "", ln) for ln in rest
-             if not re.match(r"(?i)^distrito\b", ln) and _key(ln) != "madrid")
-    address = ", ".join(x for x in parts if x)
+    rest = lines[1:5]
+    address = ""
+    for j, ln in enumerate(rest):
+        label = re.match(r"(?i)^direcci[oó]n:?\s*(.*)$", ln)
+        if label:
+            address = label[1] or (rest[j + 1] if j + 1 < len(rest) else "")
+            break
+        if POSTAL_RE.search(ln):
+            address = ln
+            break
+    address = re.sub(r",?\s*Espa[ñn]a\s*$", "", address).strip(" ,")
     district = ""
     for ln in rest:
         m = re.match(r"(?i)^distrito\s+(.+?)\.?$", ln)
         if m:
             district = agenda.district_from(m[1])
     district = district or agenda.district_in_parens(venue)
-    town = ""
-    m = POSTAL_RE.search(" ".join(rest))
-    if m:
-        town = m[1].strip()
+    m = POSTAL_RE.search(address)
+    town = m[1].strip() if m else ""
     if agenda.norm(town) == "madrid" or district or any(_key(ln) == "madrid" for ln in rest):
         town = ""
     elif not town:
@@ -125,48 +163,51 @@ def _location(block: list[str]) -> tuple[str, str, str, str]:
     return venue, address, district, town
 
 
+def _index(lines: list[str], labels: set[str], start: int = 0) -> int | None:
+    return next((i for i in range(start, len(lines)) if _key(lines[i]) in labels), None)
+
+
 def parse_event_page(html: str, url: str, title: str = "") -> list[dict]:
-    """Una actividad por sesión (o una con rango si la línea trae dos fechas)."""
+    """Una actividad por sesión; un rango (inicio - fin) es una sola actividad."""
     lines = html_to_lines(html)
     title = title or _meta(html, "og:title")
     ref = re.search(r"Ref:\s*#?\s*(\d{5,})", "\n".join(lines))
     base_id = f"{SOURCE}-{ref[1]}" if ref else f"{SOURCE}-{hashlib.sha1(url.encode()).hexdigest()[:10]}"
     tipo = (_block_after(lines, "tipo", 1) or [""])[0]
-    sessions = [ln for ln in _block_after(lines, "fechas y horarios", 12) if _dates(ln)]
+    sessions = _sessions(_block_after(lines, "fechas y horarios", 16))
     if not sessions:
         return []
-    venue, address, district, town = _location(_block_after(lines, "ubicacion", 6))
+    venue, address, district, town = _location(_block_after(lines, "ubicacion", 8))
 
-    # Precio y público van tras la descripción; se buscan solo cerca de la
-    # ficha para no confundirlos con los menús del portal.
-    start = next((i for i, ln in enumerate(lines) if _key(ln) == "informacion practica"), 0)
-    free, price, kids_line = False, "", ""
-    for ln in lines[start:start + 80]:
-        k = agenda.norm(ln)
-        if not free and FREE_RE.match(k):
-            free = True
-        if not price and PRICE_RE.match(k) and len(ln) < 160:
-            price = ln
-        if not kids_line and KIDS_RE.search(k) and 15 <= len(ln) < 160:
-            kids_line = ln
-    if not price and free:
+    # Datos de la actividad: de «Información práctica» a «Etiquetas» /
+    # «También te puede interesar». Lo de después son otras actividades.
+    start = _index(lines, {"informacion practica"}) or 0
+    stop = _index(lines, END_LABELS, start) or len(lines)
+    content = lines[start:stop]
+    audience = (_block_after(content, "dirigido a", 1) or [""])[0]
+    free = any(FREE_RE.search(agenda.norm(ln)) for ln in content)
+    price = ""
+    if free:
         price = "Gratuita"
+    else:
+        for ln in content:
+            m = PRICE_RE.search(ln)
+            if m:
+                price = ln if len(ln) <= 120 else m[0]
+                break
 
     desc = _meta(html, "og:description") or _meta(html, "description")
     coords = re.search(r"(40\.\d{3,})\s*[,/]\s*(-[34]\.\d{3,})", html)
     out = []
-    for n, ln in enumerate(sessions):
-        ds = _dates(ln)
-        times = TIME_RE.findall(ln)
+    for n, ses in enumerate(sessions):
         ev = agenda.make_event(
             id=base_id if len(sessions) == 1 else f"{base_id}-{n + 1}",
-            title=title, type_=tipo, start=min(ds), end=max(ds),
-            time=f"{int(times[0][0]):02d}:{times[0][1]}" if times else "",
+            title=title, type_=tipo, start=ses["start"], end=ses["end"], time=ses["time"],
             desc=desc, price=price, free=free, venue=venue,
             district=district, lat=coords[1] if coords else None,
-            lng=coords[2] if coords else None, link=url, audience=kids_line,
+            lng=coords[2] if coords else None, link=url, audience=audience,
         )
-        ev["kids"] = ev["kids"] or bool(kids_line)
+        ev["kids"] = ev["kids"] or bool(KIDS_RE.search(agenda.norm(audience)))
         if town:
             ev["district"] = ""
         ev["town"] = town
