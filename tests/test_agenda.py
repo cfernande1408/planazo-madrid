@@ -188,6 +188,14 @@ class JsonLdTest(unittest.TestCase):
         self.assertEqual(ev["price"], "10 €")
 
 
+class MergeTest(unittest.TestCase):
+    def test_merge_prefers_first_source_and_dedupes(self):
+        a = [{"id": "1", "title": "Concierto de Otoño", "start": "2026-10-14", "time": "19:00"}]
+        b = [{"id": "cam-1", "title": "concierto de otoño!", "start": "2026-10-14", "time": "19:00"},
+             {"id": "cam-2", "title": "Concierto de otoño", "start": "2026-10-15", "time": ""}]
+        self.assertEqual([e["id"] for e in agenda.merge(a, b)], ["1", "cam-2"])
+
+
 class AppContractTest(unittest.TestCase):
     """Las claves que lee site/index.html."""
     KEYS = {"id", "title", "desc", "cat", "kids", "free", "price", "start", "end", "time",

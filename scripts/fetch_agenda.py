@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 """Descarga la agenda del Ayuntamiento de Madrid y escribe site/data/agenda.json.
 
-Uso:
-    python scripts/fetch_agenda.py                  # descarga de las fuentes oficiales
-    python scripts/fetch_agenda.py --input f.csv    # normaliza un fichero ya descargado
+Fuentes:
+    * Ayuntamiento de Madrid (obligatoria): agenda del portal de datos abiertos.
+    * Comunidad de Madrid (opcional): RSS de actividades + fichas, acumuladas
+      en data/comunidad.json. Si falla, se usa lo que haya en la caché.
 
-Sale con código 1 si ninguna fuente da al menos --min-events actividades;
+Uso:
+    python scripts/fetch_agenda.py                  # descarga de todas las fuentes
+    python scripts/fetch_agenda.py --input f.csv    # normaliza un CSV/JSON del Ayuntamiento
+
+Sale con código 1 si el Ayuntamiento no da al menos --min-events actividades;
 en ese caso no toca el fichero de salida.
 """
 from __future__ import annotations
@@ -20,10 +25,12 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import agenda
+import comunidad
 
 MADRID = ZoneInfo("Europe/Madrid")
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_OUT = ROOT / "site" / "data" / "agenda.json"
+DEFAULT_CAM_CACHE = ROOT / "data" / "comunidad.json"
 
 SOURCES = [
     # Portal actual: dataset 300107-0 «Agenda de actividades y eventos» (CSV)
@@ -64,16 +71,21 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
     ap.add_argument("--min-events", type=int, default=50)
     ap.add_argument("--today", type=date.fromisoformat, help="fecha de corte (por defecto, hoy en Madrid)")
+    ap.add_argument("--comunidad-cache", type=Path, default=DEFAULT_CAM_CACHE)
+    ap.add_argument("--skip-comunidad", action="store_true",
+                    help="no consultar comunidad.madrid (implícito con --input)")
     args = ap.parse_args(argv)
 
     now = datetime.now(MADRID)
+    today = args.today or now.date()
     candidates = [(str(args.input), lambda: args.input.read_bytes())] if args.input else \
         [(url, lambda url=url: download(url)) for url in SOURCES]
 
+    ayto = None
     for source, get in candidates:
         print(f"Probando {source}")
         try:
-            events = agenda.normalize(agenda.decode(get()), args.today or now.date())
+            events = agenda.normalize(agenda.decode(get()), today)
         except Exception as e:  # noqa: BLE001 - probamos la siguiente fuente
             print(f"  descartada: {e}", file=sys.stderr)
             continue
@@ -81,12 +93,31 @@ def main(argv: list[str] | None = None) -> int:
         if len(events) < args.min_events:
             print(f"  descartada: menos de {args.min_events}", file=sys.stderr)
             continue
-        write_atomic(args.out, agenda.to_payload(events, source, now.isoformat(timespec="seconds")))
-        print(f"Escrito {args.out}")
-        return 0
+        ayto = events
+        break
+    if ayto is None:
+        print("Ninguna fuente válida; no se modifica la agenda.", file=sys.stderr)
+        return 1
+    for ev in ayto:
+        ev.setdefault("source", "ayto")
+        ev.setdefault("town", "")
 
-    print("Ninguna fuente válida; no se modifica la agenda.", file=sys.stderr)
-    return 1
+    cam: list[dict] = []
+    if not (args.input or args.skip_comunidad):
+        print(f"Probando {comunidad.RSS_URL}")
+        try:
+            cam = comunidad.update(args.comunidad_cache, today, download)
+        except Exception as e:  # noqa: BLE001 - la Comunidad es opcional
+            print(f"  Comunidad descartada: {e}; uso la caché", file=sys.stderr)
+            cam = [e for e in comunidad.load_cache(args.comunidad_cache).values()
+                   if e["end"] >= today.isoformat()]
+
+    events = agenda.merge(ayto, cam)
+    payload = agenda.to_payload(events, source, now.isoformat(timespec="seconds"))
+    payload["sources"] = {"ayto": len(ayto), "cam": len(cam)}
+    write_atomic(args.out, payload)
+    print(f"Escrito {args.out}: {len(events)} actividades ({len(ayto)} Ayuntamiento, {len(cam)} Comunidad)")
+    return 0
 
 
 if __name__ == "__main__":

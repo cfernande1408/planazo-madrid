@@ -349,5 +349,20 @@ def normalize(text: str, today: date) -> list[dict]:
     return out
 
 
+def merge(*groups: list[dict]) -> list[dict]:
+    """Une fuentes por orden de preferencia, sin repetir (mismo título y día)."""
+    seen: set[tuple[str, str]] = set()
+    out: list[dict] = []
+    for group in groups:
+        for ev in group:
+            key = (re.sub(r"[^a-z0-9]", "", norm(ev["title"])), ev["start"])
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(ev)
+    out.sort(key=lambda e: (e["start"], e["time"] or "99", e["title"]))
+    return out
+
+
 def to_payload(events: list[dict], source: str, generated_at: str) -> dict:
     return {"generatedAt": generated_at, "source": source, "count": len(events), "events": events}
