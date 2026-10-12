@@ -181,8 +181,15 @@ def coord(value: object) -> float | None:
     return round(x, 6)
 
 
-_EUR_RE = re.compile(r"(?:€|eur(?:os?)?)\s*(\d+(?:[.,]\d{1,2})?)\b|(\d+(?:[.,]\d{1,2})?)\s*(?:€|eur(?:os?)?\b)",
-                     re.I)
+# Sin \b al final: el portal pega palabras («20 eurosDescuentos», «gratuitoEl»).
+_EUR_RE = re.compile(r"(?:€|eur(?:os?)?)\s*(\d+(?:[.,]\d{1,2})?)\b|(\d+(?:[.,]\d{1,2})?)\s*(?:€|eur)", re.I)
+FREE_TEXT_RE = re.compile(r"gratuit[ao]s?|\bgratis|entrada libre|acceso libre")
+
+
+def clean_price(value: object) -> str:
+    """Separa palabras pegadas («eurosDescuentos», «libre.Para») y recorta."""
+    s = re.sub(r"([a-záéíóúñ.])([A-ZÁÉÍÓÚÑ])", r"\1 \2", str(value or ""))
+    return clean_text(s, 120)
 
 
 def price_value(text: object) -> float | None:
@@ -207,6 +214,8 @@ def make_event(*, id: str, title: str, type_: str, start: str, end: str, time: s
     desc = clean_text(desc, DESC_MAX)
     cat = classify(type_, title, desc)
     audience = clean_audience(clean_text(audience))
+    price = clean_price(price)
+    free = bool(free) or bool(FREE_TEXT_RE.search(norm(price)))
     venue = clean_text(venue)
     district = district or district_in_text(title, venue)
     ev = {
@@ -216,7 +225,7 @@ def make_event(*, id: str, title: str, type_: str, start: str, end: str, time: s
         "cat": cat,
         "kids": cat == "peques" or bool(re.search(r"nin|famil|infan|bebe", norm(audience))),
         "free": bool(free),
-        "price": clean_text(price, 120),
+        "price": price,
         "eur": 0.0 if free else price_value(price),
         "start": start,
         "end": end if end >= start else start,

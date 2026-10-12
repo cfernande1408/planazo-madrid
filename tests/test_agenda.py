@@ -92,9 +92,22 @@ class HelpersTest(unittest.TestCase):
     def test_price_value(self):
         cases = {"6 €": 6.0, "Entrada: 3 euros, reducida 1,50 €": 3.0, "12,50€": 12.5,
                  "€ 8": 8.0, "Precio: 15 EUR": 15.0, "Consultar": None, "": None,
-                 "Aforo 120 personas": None}
+                 "Aforo 120 personas": None, "Entrada general: 20 eurosDescuentos disponibles": 20.0}
         for text, expected in cases.items():
             self.assertEqual(agenda.price_value(text), expected, text)
+
+    def test_free_from_price_text(self):
+        for text in ("Entrada libre hasta completar aforo", "Entrada gratuita con inscripción previa",
+                     "Acceso gratuitoEl centro no dispone de consigna", "Gratuito", "Acceso libre"):
+            ev = agenda.make_event(id="1", title="x", type_="", start="2026-10-14", end="2026-10-14",
+                                   time="", price=text, free=False)
+            self.assertTrue(ev["free"], text)
+            self.assertEqual(ev["eur"], 0.0, text)
+        ev = agenda.make_event(id="1", title="x", type_="", start="2026-10-14", end="2026-10-14",
+                               time="", price="Entrada general: 20 eurosDescuentos disponibles")
+        self.assertFalse(ev["free"])
+        self.assertEqual(ev["price"], "Entrada general: 20 euros Descuentos disponibles")
+        self.assertEqual(ev["eur"], 20.0)
 
     def test_dates_and_times(self):
         self.assertEqual(agenda.date_key("2026-10-14 00:00:00.0"), "2026-10-14")
