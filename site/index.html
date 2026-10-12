@@ -447,7 +447,9 @@ function setEvents(evs){
 /* ---------- matching ---------- */
 function inCats(ev,set){return set.has(ev.cat)||(set.has('peques')&&ev.kids)}
 function matchQ(ev){if(!state.q)return true;const q=norm(state.q);return norm(ev.title+' '+ev.venue+' '+ev.district+' '+(ev.town||'')+' '+CAT[ev.cat].name).includes(q)}
-function budgetOk(ev,b){return b==null||ev.free||(ev.eur!=null&&ev.eur<=b)}
+// Gratis = solo lo gratuito; «Hasta X €» = solo de pago hasta ese precio.
+const isFree=ev=>ev.free||ev.eur===0;
+function budgetOk(ev,b){if(b==null)return true;if(b===0)return isFree(ev);return !isFree(ev)&&ev.eur!=null&&ev.eur<=b}
 function matchesPrefs(ev){
   const p=state.prefs;
   if(p.cats.length&&!inCats(ev,new Set(p.cats)))return false;
@@ -590,7 +592,7 @@ function renderPrefs(){
   $('#v-prefs').innerHTML=`
   <div class="pcard"><h2>Lo que te gusta</h2><p>Lo usaré para ordenar «Para ti». Si no eliges nada, te enseño de todo.</p><div class="chips wrap">${CATS.filter(c=>c.id!=='otros').map(c=>pc('pcat',c.id,c.name,p.cats.includes(c.id),c.icon,`--c-bg:var(--cat-${c.id}-bg);--c-fg:var(--cat-${c.id}-fg)`)).join('')}</div></div>
   <div class="pcard"><h2>Tus barrios</h2><p>Los planes de estos distritos suben arriba y tienen su propia sección.</p><div class="chips wrap">${DIST_LIST.map(x=>pc('pdist',x,x,p.districts.includes(x),'location_on')).join('')}</div><div style="margin-top:12px"><label class="sw-row"><span><b>Planes en otros municipios</b><small>Getafe, Alcalá, la Sierra… de la agenda de la Comunidad</small></span><input type="checkbox" class="switch" id="ptowns"${p.towns?' checked':''}></label></div></div>
-  <div class="pcard"><h2>Presupuesto</h2><p>Lo que pase de ahí no te lo enseño. Las actividades sin precio conocido se ocultan al filtrar.</p><div class="chips wrap">${budgetChips('pbudget',p.budget)}</div></div>
+  <div class="pcard"><h2>Presupuesto</h2><p>«Gratis» enseña solo lo gratuito; «Hasta 10 €» y los demás, solo planes de pago hasta ese precio. Lo que no tiene precio conocido se oculta al filtrar.</p><div class="chips wrap">${budgetChips('pbudget',p.budget)}</div></div>
   <div class="pcard"><h2>Cuándo te viene bien</h2><p>Si eliges franjas, escondo lo que cae fuera.</p><div class="chips wrap">${SLOTS.map(s=>pc('pslot',s.id,s.name,p.slots.includes(s.id),s.icon)).join('')}</div>
     <div style="margin-top:12px"><label class="sw-row"><span><b>Voy con peques</b><small>Prioriza actividades para familias</small></span><input type="checkbox" class="switch" id="pkids"${p.kids?' checked':''}></label></div></div>
   <div class="pcard" id="datacard"><h2>De dónde salen los datos</h2><p>${loaded?`<b>${nf.format(d.count)}</b> actividades${d.sources?`: ${nf.format(d.sources.ayto)} del Ayuntamiento y ${nf.format(d.sources.cam)} de la Comunidad`:''}.`:'Ahora mismo ves ejemplos.'} Cada mañana se descarga la agenda de datos abiertos del Ayuntamiento y se leen las actividades nuevas que publica la Comunidad de Madrid.</p><div class="row"><a class="btn outlined" href="${DATASET_URL}" target="_blank" rel="noopener"><span class="ms">open_in_new</span>Ver el dataset</a></div></div>
