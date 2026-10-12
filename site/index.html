@@ -149,6 +149,7 @@ main{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:0 120px}
 .stat .ms{font-size:18px;color:var(--primary)}
 .hero{padding-bottom:0}
 .chips.budget{margin-top:12px}
+.chip-sep{flex:none;width:1px;align-self:stretch;margin:4px 2px;background:var(--outline-var)}
 .hero > :not(svg){position:relative;z-index:1}
 .stars{position:absolute;top:18px;right:18px;width:58px;height:auto;fill:currentColor;opacity:.9}
 .skyline{display:block;width:calc(100% + 40px);height:auto;margin:6px -20px 0;color:var(--hero-fg)}
@@ -520,7 +521,7 @@ function renderParaTi(){
   let h=`<div class="hero">${STARS}
     <span class="eyebrow">${esc(fmtLong.format(t))}</span>
     <h2>${state.q?'Resultados para «'+esc(state.q)+'»':(hasPrefs?'Tus planes en Madrid':'Qué pasa hoy en Madrid')}</h2>
-    <div class="stats"><span class="stat"><span class="ms">event</span>${nf.format(todayMine.length)} planes hoy</span><span class="stat"><span class="ms">redeem</span>${nf.format(freeToday)} gratis</span>${state.saved.size?`<span class="stat"><span class="ms fill">bookmark</span>${state.saved.size} guardados</span>`:''}</div>${SKYLINE}</div><div class="chips budget" role="toolbar" aria-label="Presupuesto">${budgetChips('pbudget',p.budget)}</div>`;
+    <div class="stats"><span class="stat"><span class="ms">event</span>${nf.format(todayMine.length)} planes hoy</span><span class="stat"><span class="ms">redeem</span>${nf.format(freeToday)} gratis</span>${state.saved.size?`<span class="stat"><span class="ms fill">bookmark</span>${state.saved.size} guardados</span>`:''}</div>${SKYLINE}</div><div class="chips budget" role="toolbar" aria-label="Filtros de Para ti">${budgetChips('pbudget',p.budget)}<span class="chip-sep" aria-hidden="true"></span>${CATS.filter(x=>x.id!=='otros').map(x=>{const on=p.cats.includes(x.id);return`<button class="chip cat" style="--c-bg:var(--cat-${x.id}-bg);--c-fg:var(--cat-${x.id}-fg)" data-act="pcat" data-val="${x.id}" aria-pressed="${on}"><span class="ms">${on?'check':x.icon}</span>${x.name}</button>`}).join('')}<span class="chip-sep" aria-hidden="true"></span><button class="chip" data-act="ptownschip" aria-pressed="${!!p.towns}"><span class="ms">${p.towns?'check':'map'}</span>Otros municipios</button></div>`;
   if(!hasPrefs&&!state.q){h+=`<div class="sec"><div class="banner"><span class="ms">tune</span><p><b>Dime qué te gusta</b> y ordeno la agenda por ti: tipos de plan, tus barrios y a qué hora te viene bien.</p><button class="btn tonal" data-act="view" data-v="prefs">Elegir</button></div></div>`}
 
   // saved upcoming
@@ -650,7 +651,8 @@ document.addEventListener('click',e=>{
     case'pbudget':{const v=+el.dataset.v;state.prefs.budget=state.prefs.budget===v?null:v;savePrefs();state.expanded.clear();state.view==='prefs'?renderPrefs():renderParaTi();break}
     case'caltowns':state.cal.towns=!state.cal.towns;renderCal();break;
     case'calcat':{const c=el.dataset.c;state.cal.cats.has(c)?state.cal.cats.delete(c):state.cal.cats.add(c);renderCal();break}
-    case'pcat':tog(p.cats,el.dataset.val);savePrefs();renderPrefs();break;
+    case'pcat':tog(p.cats,el.dataset.val);savePrefs();state.expanded.clear();state.view==='prefs'?renderPrefs():renderParaTi();break;
+    case'ptownschip':p.towns=!p.towns;state.cal.towns=p.towns;savePrefs();state.expanded.clear();renderParaTi();break;
     case'pdist':tog(p.districts,el.dataset.val);savePrefs();renderPrefs();break;
     case'pslot':tog(p.slots,el.dataset.val);savePrefs();renderPrefs();break;
     case'clearsaved':state.saved.clear();saveSaved();renderPrefs();toast('Guardados vaciados');break;
