@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="Qué pasa en Madrid día a día: agenda municipal filtrada por tus intereses, con calendario.">
-<meta name="theme-color" content="#FFF8F8" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#191113" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#FCFBFB" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141313" media="(prefers-color-scheme: dark)">
 <title>Planazo Madrid</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23FFD9E0'/%3E%3Cpath d='M16 5c6-3 12 1 12 6-6 1-11-2-12-6ZM16 5c-6-3-12 1-12 6 6 1 11-2 12-6Z' fill='%233E7B4F'/%3E%3Ccircle cx='11' cy='18.5' r='6' fill='%23C2273A'/%3E%3Ccircle cx='21.5' cy='17.5' r='6' fill='%23C2273A'/%3E%3Ccircle cx='16' cy='25' r='5.5' fill='%23C2273A'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='32' height='32' rx='8' fill='#F1EAEA'/%3E%3Crect fill='#6B4A3A' x='23' y='13' width='3' height='18' rx='1.2'/%3E%3Ccircle fill='#3E7B4F' cx='24.5' cy='9' r='6.8'/%3E%3Ccircle fill='#C8102E' cx='22' cy='7' r='1.15'/%3E%3Ccircle fill='#C8102E' cx='26.6' cy='6.6' r='1.15'/%3E%3Ccircle fill='#C8102E' cx='24.6' cy='10.8' r='1.15'/%3E%3Ccircle fill='#C8102E' cx='28.4' cy='10.4' r='1.05'/%3E%3Ccircle fill='#C8102E' cx='20.6' cy='11.2' r='1'/%3E%3Cg fill='#3A2B26' color='#3A2B26'%3E%3Cellipse cx='13' cy='20' rx='6' ry='8.6' transform='rotate%28-22 13 20%29'/%3E%3Ccircle cx='17.2' cy='10' r='3.7'/%3E%3Ccircle cx='15.1' cy='7' r='1.35'/%3E%3Cellipse cx='20.4' cy='10.9' rx='2.1' ry='1.45'/%3E%3Cpath d='M16.5 14.2L22.4 12.6M17 18.4L22.4 17.4M10.6 26.5L9.6 30.4M15.4 27L16.2 30.4' stroke='currentColor' stroke-width='2.7' stroke-linecap='round' fill='none'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..1000&display=swap">
@@ -15,12 +15,13 @@
 <style>
 /* Layout: MD3 app — bottom nav bar on phones, nav rail on desktop; "Para ti" feed, month calendar + day agenda, interests. Rose seed, one tonal colour per activity type. */
 :root{
-  --primary:#8F4A5C;--on-primary:#FFFFFF;--primary-container:#FFD9E0;--on-primary-container:#3B0719;
-  --secondary-container:#F2DDE1;--on-secondary-container:#2C1519;
-  --surface:#FFF8F8;--surface-low:#FFF0F2;--surface-c:#FAEAEC;--surface-high:#F4E4E6;--surface-highest:#EEDEE0;
-  --on-surface:#22191B;--on-surface-var:#524346;--outline:#847376;--outline-var:#D6C2C5;
-  --inverse-surface:#382E30;--inverse-on:#FDEDEF;--scrim:rgba(34,25,27,.42);
-  --leaf:#3E7B4F;--berry:#C2273A;--sun:#FF9F7A;
+  --primary:#B01E2F;--on-primary:#FFFFFF;--primary-container:#F1EAEA;--on-primary-container:#410008;
+  --secondary-container:#ECE7E6;--on-secondary-container:#1F1B1B;
+  --surface:#FCFBFB;--surface-low:#F6F4F4;--surface-c:#F0EDED;--surface-high:#EAE7E7;--surface-highest:#E4E1E1;
+  --on-surface:#1C1B1B;--on-surface-var:#4F4848;--outline:#807676;--outline-var:#D3CCCC;
+  --inverse-surface:#313030;--inverse-on:#F4F0F0;--scrim:rgba(28,27,27,.42);
+  --hero-bg:#B01E2F;--hero-fg:#FFFFFF;--hero-accent:#FFC9A8;
+  --leaf:#3E7B4F;--berry:#C8102E;--sun:#FFC9A8;--bear:#3A2B26;
   --font:"Roboto Flex",Roboto,system-ui,-apple-system,"Segoe UI",sans-serif;
   --cat-musica-bg:#E8DEFF;--cat-musica-fg:#21005D;--cat-musica-dot:#6750A4;
   --cat-escena-bg:#FFD8E4;--cat-escena-fg:#31111D;--cat-escena-dot:#984061;
@@ -35,12 +36,13 @@
   --cat-otros-bg:#E3E1EC;--cat-otros-fg:#1A1B23;--cat-otros-dot:#5D5E67;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --primary:#FFB1C2;--on-primary:#561D2F;--primary-container:#723345;--on-primary-container:#FFD9E0;
-  --secondary-container:#5A3F45;--on-secondary-container:#F2DDE1;
-  --surface:#191113;--surface-low:#22191B;--surface-c:#261D1F;--surface-high:#31282A;--surface-highest:#3C3234;
-  --on-surface:#EFDFE1;--on-surface-var:#D6C2C5;--outline:#9F8C8F;--outline-var:#524346;
-  --inverse-surface:#EFDFE1;--inverse-on:#382E30;--scrim:rgba(0,0,0,.6);
-  --leaf:#8FD8A6;--berry:#FF8A8F;--sun:#F6E388;
+  --primary:#FFB3B0;--on-primary:#680014;--primary-container:#3A3131;--on-primary-container:#FFDAD8;
+  --secondary-container:#3D3838;--on-secondary-container:#ECE7E6;
+  --surface:#141313;--surface-low:#1C1B1B;--surface-c:#201F1F;--surface-high:#2B2929;--surface-highest:#363434;
+  --on-surface:#E6E1E1;--on-surface-var:#D3CCCC;--outline:#9C9494;--outline-var:#4F4848;
+  --inverse-surface:#E6E1E1;--inverse-on:#313030;--scrim:rgba(0,0,0,.6);
+  --hero-bg:#7A1320;--hero-fg:#FFE9E8;--hero-accent:#F6E388;
+  --leaf:#8FD8A6;--berry:#FF6B78;--sun:#F6E388;--bear:#E8D9CF;
   --cat-musica-bg:#4F378B;--cat-musica-fg:#E8DEFF;--cat-musica-dot:#D0BCFF;
   --cat-escena-bg:#633B48;--cat-escena-fg:#FFD8E4;--cat-escena-dot:#FFB0C9;
   --cat-cine-bg:#1F4876;--cat-cine-fg:#D3E4FF;--cat-cine-dot:#A2C9FF;
@@ -54,12 +56,13 @@
   --cat-otros-bg:#45464F;--cat-otros-fg:#E3E1EC;--cat-otros-dot:#C6C5D0;
   color-scheme:dark}}
 :root[data-theme="dark"]{
-  --primary:#FFB1C2;--on-primary:#561D2F;--primary-container:#723345;--on-primary-container:#FFD9E0;
-  --secondary-container:#5A3F45;--on-secondary-container:#F2DDE1;
-  --surface:#191113;--surface-low:#22191B;--surface-c:#261D1F;--surface-high:#31282A;--surface-highest:#3C3234;
-  --on-surface:#EFDFE1;--on-surface-var:#D6C2C5;--outline:#9F8C8F;--outline-var:#524346;
-  --inverse-surface:#EFDFE1;--inverse-on:#382E30;--scrim:rgba(0,0,0,.6);
-  --leaf:#8FD8A6;--berry:#FF8A8F;--sun:#F6E388;
+  --primary:#FFB3B0;--on-primary:#680014;--primary-container:#3A3131;--on-primary-container:#FFDAD8;
+  --secondary-container:#3D3838;--on-secondary-container:#ECE7E6;
+  --surface:#141313;--surface-low:#1C1B1B;--surface-c:#201F1F;--surface-high:#2B2929;--surface-highest:#363434;
+  --on-surface:#E6E1E1;--on-surface-var:#D3CCCC;--outline:#9C9494;--outline-var:#4F4848;
+  --inverse-surface:#E6E1E1;--inverse-on:#313030;--scrim:rgba(0,0,0,.6);
+  --hero-bg:#7A1320;--hero-fg:#FFE9E8;--hero-accent:#F6E388;
+  --leaf:#8FD8A6;--berry:#FF6B78;--sun:#F6E388;--bear:#E8D9CF;
   --cat-musica-bg:#4F378B;--cat-musica-fg:#E8DEFF;--cat-musica-dot:#D0BCFF;
   --cat-escena-bg:#633B48;--cat-escena-fg:#FFD8E4;--cat-escena-dot:#FFB0C9;
   --cat-cine-bg:#1F4876;--cat-cine-fg:#D3E4FF;--cat-cine-dot:#A2C9FF;
@@ -93,7 +96,7 @@ main{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:0 120px}
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);padding-block:14px 10px;display:flex;flex-direction:column;gap:12px}
 .brand{display:flex;align-items:center;gap:12px}
 .logo{width:44px;height:44px;border-radius:14px;background:var(--primary-container);color:var(--on-primary-container);display:grid;place-items:center;transform:rotate(-6deg)}
-.madrono .lf{fill:var(--leaf)}.madrono .lf2{opacity:.75}.madrono .bry{fill:var(--berry)}.madrono .hl{fill:#fff;opacity:.5}
+.madrono .lf{fill:var(--leaf)}.madrono .bry{fill:var(--berry)}.madrono .bear{fill:var(--bear);color:var(--bear)}.madrono .trunk{fill:var(--bear);opacity:.45}
 .brand h1{margin:0;font-size:24px;line-height:1.1;font-weight:800;font-variation-settings:"wdth" 118,"opsz" 40;letter-spacing:-.01em}
 .brand p{margin:2px 0 0;font-size:12.5px;color:var(--on-surface-var)}
 .search{display:flex;align-items:center;gap:10px;height:52px;padding:0 6px 0 16px;border-radius:28px;background:var(--surface-high);color:var(--on-surface-var)}
@@ -138,7 +141,7 @@ main{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:0 120px}
 .sec-h.small h2{font-size:20px;font-variation-settings:"wdth" 112,"opsz" 32}
 
 /* Hero */
-.hero{margin-top:8px;padding:22px 20px;border-radius:28px;background:var(--primary-container);color:var(--on-primary-container);display:grid;gap:14px;position:relative;overflow:hidden}
+.hero{margin-top:8px;padding:22px 20px;border-radius:28px;background:var(--hero-bg);color:var(--hero-fg);display:grid;gap:14px;position:relative;overflow:hidden}
 .hero .eyebrow{font-size:13px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;opacity:.85}
 .hero h2{margin:0;font-size:clamp(28px,6vw,44px);line-height:1.02;font-weight:850;font-variation-settings:"wdth" 125,"opsz" 72;letter-spacing:-.02em;text-wrap:balance;max-width:16ch}
 .hero .stats{display:flex;gap:10px;flex-wrap:wrap}
@@ -146,12 +149,12 @@ main{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:0 120px}
 .stat .ms{font-size:18px;color:var(--primary)}
 .hero{padding-bottom:0}
 .hero > :not(svg){position:relative;z-index:1}
-.stars{position:absolute;top:18px;right:18px;width:58px;height:auto;fill:currentColor;opacity:.32}
-.skyline{display:block;width:calc(100% + 40px);height:auto;margin:6px -20px 0;color:var(--on-primary-container)}
+.stars{position:absolute;top:18px;right:18px;width:58px;height:auto;fill:currentColor;opacity:.9}
+.skyline{display:block;width:calc(100% + 40px);height:auto;margin:6px -20px 0;color:var(--hero-fg)}
 .skyline .front{fill:currentColor;opacity:.92}
 .skyline .back{fill:currentColor;opacity:.2}
-.skyline .holes{fill:var(--primary-container)}
-.skyline .caps{fill:var(--berry)}
+.skyline .holes{fill:var(--hero-bg)}
+.skyline .caps{fill:var(--hero-accent)}
 .skyline .sun{fill:var(--sun)}
 @media (min-width:700px){
   .hero{padding-bottom:22px;min-height:210px}
@@ -284,7 +287,7 @@ dialog#sheet::backdrop{background:var(--scrim)}
 <main>
   <header class="top">
     <div class="brand">
-      <div class="logo" aria-hidden="true"><svg viewBox="0 0 32 32" width="30" height="30" class="madrono"><path class="lf" d="M16 5c6-3 12 1 12 6-6 1-11-2-12-6Z"/><path class="lf lf2" d="M16 5c-6-3-12 1-12 6 6 1 11-2 12-6Z"/><path class="lf" d="M15.4 5h1.2v6h-1.2Z"/><circle class="bry" cx="11" cy="18.5" r="6"/><circle class="bry" cx="21.5" cy="17.5" r="6"/><circle class="bry" cx="16" cy="25" r="5.5"/><circle class="hl" cx="9" cy="16.5" r="1.6"/><circle class="hl" cx="19.5" cy="15.5" r="1.6"/><circle class="hl" cx="14.2" cy="23.2" r="1.4"/></svg></div>
+      <div class="logo" aria-hidden="true"><svg viewBox="0 0 32 32" width="32" height="32" class="madrono"><rect class="trunk" x="23" y="13" width="3" height="18" rx="1.2"/><circle class="lf" cx="24.5" cy="9" r="6.8"/><circle class="bry" cx="22" cy="7" r="1.15"/><circle class="bry" cx="26.6" cy="6.6" r="1.15"/><circle class="bry" cx="24.6" cy="10.8" r="1.15"/><circle class="bry" cx="28.4" cy="10.4" r="1.05"/><circle class="bry" cx="20.6" cy="11.2" r="1"/><g class="bear"><ellipse cx="13" cy="20" rx="6" ry="8.6" transform="rotate(-22 13 20)"/><circle cx="17.2" cy="10" r="3.7"/><circle cx="15.1" cy="7" r="1.35"/><ellipse cx="20.4" cy="10.9" rx="2.1" ry="1.45"/><path d="M16.5 14.2L22.4 12.6M17 18.4L22.4 17.4M10.6 26.5L9.6 30.4M15.4 27L16.2 30.4" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" fill="none"/></g></svg></div>
       <div><h1>Planazo</h1><p id="status">Qué pasa en Madrid, día a día</p></div>
     </div>
     <label class="search"><span class="ms">search</span>
