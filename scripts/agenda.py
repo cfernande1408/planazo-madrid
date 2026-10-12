@@ -71,11 +71,15 @@ def last_segment(value: object) -> str:
     return parts[-1] if parts else ""
 
 
-def classify(type_: str, title: str) -> str:
-    """Categoría de la app a partir del tipo oficial y, si no basta, del título."""
+def classify(type_: str, title: str, desc: str = "") -> str:
+    """Categoría a partir del tipo oficial; si no basta, del título y la descripción.
+
+    Muchas actividades llegan como «ProgramacionDestacadaAgendaCultura» con
+    el nombre del artista por título, así que la descripción decide.
+    """
     t = str(type_ or "")
     t = norm(t.split("/actividades/", 1)[1] if "/actividades/" in t else last_segment(t))
-    for text in (t, norm(title)):
+    for text in (t, norm(title), norm(desc)[:400]):
         for cat, keywords in CATEGORIES:
             if any(k in text for k in keywords):
                 return cat
@@ -86,6 +90,51 @@ def district_from(value: object) -> str:
     """Nombre de distrito a partir de texto libre o de la URI del portal."""
     key = re.sub(r"[^a-z]", "", norm(last_segment(value) if "/" in str(value or "") else value))
     return DISTRICTS.get(key, "")
+
+
+# Nombres extra que aparecen en títulos y lugares.
+DISTRICT_ALIASES = {
+    "san blas": "San Blas-Canillejas", "fuencarral": "Fuencarral-El Pardo",
+    "moncloa": "Moncloa-Aravaca", "aravaca": "Moncloa-Aravaca",
+}
+# Palabras corrientes que solo cuentan como distrito con contexto explícito.
+AMBIGUOUS_DISTRICTS = {"centro", "latina", "retiro", "salamanca"}
+
+
+def _text_key(value: object) -> str:
+    s = re.sub(r"[-–—]", " ", norm(value))
+    return re.sub(r"\s+", " ", s).strip()
+
+
+_DISTRICT_TEXT = sorted(
+    [(_text_key(name), name) for name in DISTRICTS.values()]
+    + [(_text_key(k), v) for k, v in DISTRICT_ALIASES.items()],
+    key=lambda kv: -len(kv[0]),
+)
+
+
+def district_in_text(*texts: object) -> str:
+    """Distrito mencionado en un título o lugar: «(Fuencarral-El Pardo)», «- Chamartin»."""
+    s = _text_key(" ".join(str(t or "") for t in texts))
+    for key, name in _DISTRICT_TEXT:
+        if key in AMBIGUOUS_DISTRICTS:
+            pattern = rf"(distrito (de )?{key}\b|\({key}\))"
+        else:
+            pattern = rf"\b{re.escape(key)}\b"
+        if re.search(pattern, s):
+            return name
+    return ""
+
+
+def clean_audience(value: object) -> str:
+    """«/usuario/Niños,/usuario/PoblaciónGeneral» → «Niños, Población general»."""
+    parts: list[str] = []
+    for raw in re.split(r"[,;]", str(value or "")):
+        seg = last_segment(raw.strip()) if "/" in raw else raw.strip()
+        seg = re.sub(r"(?<=[a-zñáéíóú])(?=[A-ZÑÁÉÍÓÚ])", " ", seg).strip()
+        if seg:
+            parts.append(seg[0].upper() + seg[1:].lower())
+    return ", ".join(dict.fromkeys(parts))
 
 
 def parse_weekdays(value: object) -> list[int] | None:
@@ -142,12 +191,15 @@ def make_event(*, id: str, title: str, type_: str, start: str, end: str, time: s
                venue: str = "", district: str = "", lat=None, lng=None,
                link: str = "", audience: str = "", long_hint: bool = False) -> dict:
     title = clean_text(title)
-    cat = classify(type_, title)
-    audience = clean_text(audience)
+    desc = clean_text(desc, DESC_MAX)
+    cat = classify(type_, title, desc)
+    audience = clean_audience(clean_text(audience))
+    venue = clean_text(venue)
+    district = district or district_in_text(title, venue)
     ev = {
         "id": str(id),
         "title": title,
-        "desc": clean_text(desc, DESC_MAX),
+        "desc": desc,
         "cat": cat,
         "kids": cat == "peques" or bool(re.search(r"nin|famil|infan|bebe", norm(audience))),
         "free": bool(free),
@@ -157,14 +209,16 @@ def make_event(*, id: str, title: str, type_: str, start: str, end: str, time: s
         "time": time,
         "days": days,
         "excl": excl or [],
-        "venue": clean_text(venue),
+        "venue": venue,
         "district": district,
         "lat": coord(lat),
         "lng": coord(lng),
         "link": str(link or "").strip(),
         "audience": audience,
     }
-    if long_hint and not days:
+    # Larga duración abierta casi a diario (exposiciones): la app la muestra
+    # aparte. Con 1-4 días por semana es un ciclo de sesiones y va a su día.
+    if long_hint and (not days or len(days) >= 5):
         ev["longHint"] = True
     return ev
 

@@ -32,6 +32,13 @@ CSV_TEXT = (
     "Biblioteca;;;;;RETIRO;;;;;;;/contenido/actividades/Musica;\n"
     "101;Concierto de otoño;;1;0;;;2026-10-21 00:00:00.0;2026-10-21 23:59:00.0;19:00;;;;;;"
     "Centro Cultural Lucero;;;;;LATINA;;;;;;;/contenido/actividades/Musica;\n"
+    "105;Fotografía de barrio;;1;1;M,X,J,V,S,D;;2026-09-15 00:00:00.0;2026-12-15 23:59:00.0;;;;;;;"
+    "Centro Cultural Conde Duque;;;;;CENTRO;;;;;;;/contenido/actividades/Exposiciones;\n"
+    "106;Club de ajedrez;;1;1;J;;2026-09-01 00:00:00.0;2026-12-31 23:59:00.0;18:00;;;;;;"
+    "Biblioteca Ana María Matute;;;;;CARABANCHEL;;;;;;;/contenido/actividades/CursosTalleres;\n"
+    "107;Alice Wonder;;0;0;;;2026-10-16 00:00:00.0;2026-10-16 23:59:00.0;21:00;"
+    "Concierto de pop electrónico en directo.;;;;;Escenario móvil (Fuencarral-El Pardo);;;;;;;;;;;;"
+    "/contenido/actividades/ProgramacionDestacadaAgendaCultura;/usuario/Niños,/usuario/PoblaciónGeneral\n"
 )
 
 # Formato JSON-LD del dataset 206974-0, con un salto de línea crudo y un
@@ -69,6 +76,19 @@ class HelpersTest(unittest.TestCase):
         self.assertEqual(agenda.parse_weekdays("sábado, domingo"), [0, 6])
         self.assertIsNone(agenda.parse_weekdays(""))
 
+    def test_district_in_text(self):
+        self.assertEqual(agenda.district_in_text("Alertante de distrito (Fuencarral-El Pardo) - Mara"),
+                         "Fuencarral-El Pardo")
+        self.assertEqual(agenda.district_in_text("Alejandro y María Laura - Chamartin"), "Chamartín")
+        self.assertEqual(agenda.district_in_text("Fiesta en Villa de Vallecas"), "Villa de Vallecas")
+        self.assertEqual(agenda.district_in_text("Teatro en el distrito Centro"), "Centro")
+        self.assertEqual(agenda.district_in_text("Noche de música latina", "Centro Cultural X"), "")
+
+    def test_clean_audience(self):
+        self.assertEqual(agenda.clean_audience("/usuario/Jovenes,/usuario/Familias"), "Jovenes, Familias")
+        self.assertEqual(agenda.clean_audience("Niños,Familias"), "Niños, Familias")
+        self.assertEqual(agenda.clean_audience(""), "")
+
     def test_dates_and_times(self):
         self.assertEqual(agenda.date_key("2026-10-14 00:00:00.0"), "2026-10-14")
         self.assertEqual(agenda.date_keys("20/10/2026;2026-10-27"), ["2026-10-20", "2026-10-27"])
@@ -89,7 +109,7 @@ class CsvTest(unittest.TestCase):
 
     def test_past_events_are_dropped(self):
         self.assertNotIn("Ya pasó", self.by_title)
-        self.assertEqual(len(self.events), 4)
+        self.assertEqual(len(self.events), 7)
 
     def test_fields(self):
         ev = self.by_title["Concierto de otoño"][0]
@@ -115,6 +135,23 @@ class CsvTest(unittest.TestCase):
         ev = self.by_title["Exposición de carteles"][0]
         self.assertTrue(ev["longHint"])
         self.assertEqual(ev["cat"], "expos")
+
+    def test_long_running_with_daily_opening_is_ongoing(self):
+        ev = self.by_title["Fotografía de barrio"][0]
+        self.assertTrue(ev["longHint"])
+        self.assertEqual(ev["days"], [0, 2, 3, 4, 5, 6])
+
+    def test_long_running_weekly_session_stays_in_its_day(self):
+        ev = self.by_title["Club de ajedrez"][0]
+        self.assertNotIn("longHint", ev)
+        self.assertEqual(ev["days"], [4])
+
+    def test_featured_programme_uses_description_and_venue(self):
+        ev = self.by_title["Alice Wonder"][0]
+        self.assertEqual(ev["cat"], "musica")
+        self.assertEqual(ev["district"], "Fuencarral-El Pardo")
+        self.assertEqual(ev["audience"], "Niños, Población general")
+        self.assertTrue(ev["kids"])
 
     def test_ids_are_unique(self):
         ids = [e["id"] for e in self.events]
