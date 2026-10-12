@@ -299,7 +299,7 @@ dialog#sheet::backdrop{background:var(--scrim)}
   <section id="v-parati" class="view"></section>
   <section id="v-cal" class="view" hidden></section>
   <section id="v-prefs" class="view" hidden></section>
-  <footer>Datos de la agenda: Ayuntamiento de Madrid, <a href="https://datos.madrid.es" target="_blank" rel="noopener">Portal de Datos Abiertos</a> (CC BY 4.0)</footer>
+  <footer>Datos: <a href="https://datos.madrid.es" target="_blank" rel="noopener">Ayuntamiento de Madrid</a> (CC BY 4.0) y <a href="https://www.comunidad.madrid/actividades" target="_blank" rel="noopener">Comunidad de Madrid</a></footer>
 </main>
 
 <dialog id="sheet" aria-label="Detalle de la actividad"></dialog>
@@ -393,15 +393,16 @@ function examples(){
 }
 
 /* ---------- state ---------- */
-const P0={cats:[],districts:[],slots:[],freeOnly:false,kids:false};
+const P0={cats:[],districts:[],slots:[],freeOnly:false,kids:false,towns:false};
 const state={
   view:'parati',q:'',
   prefs:Object.assign({},P0,store.get('planazo.prefs',{})),
   saved:new Set(store.get('planazo.saved',[])),
-  cal:{month:null,sel:null,mine:false,free:false,district:'',cats:new Set()},
+  cal:{month:null,sel:null,mine:false,free:false,towns:false,district:'',cats:new Set()},
   expanded:new Set(),
   data:{source:'cargando'},events:[],map:new Map(),byDay:new Map(),ongoing:[],maxKey:null
 };
+state.cal.towns=!!state.prefs.towns;
 function savePrefs(){store.set('planazo.prefs',state.prefs)}
 function saveSaved(){store.set('planazo.saved',[...state.saved])}
 
@@ -411,7 +412,7 @@ async function loadData(){
     if(!r.ok)throw new Error('HTTP '+r.status);
     const d=await r.json();
     if(!d||!Array.isArray(d.events)||!d.events.length)throw new Error('vacío');
-    state.data={source:'oficial',generatedAt:Date.parse(d.generatedAt)||Date.now(),count:d.events.length};
+    state.data={source:'oficial',generatedAt:Date.parse(d.generatedAt)||Date.now(),count:d.events.length,sources:d.sources||null};
     setEvents(d.events);
   }catch(e){state.data={source:'ejemplo'};setEvents(examples())}
 }
@@ -439,18 +440,19 @@ function setEvents(evs){
 
 /* ---------- matching ---------- */
 function inCats(ev,set){return set.has(ev.cat)||(set.has('peques')&&ev.kids)}
-function matchQ(ev){if(!state.q)return true;const q=norm(state.q);return norm(ev.title+' '+ev.venue+' '+ev.district+' '+CAT[ev.cat].name).includes(q)}
+function matchQ(ev){if(!state.q)return true;const q=norm(state.q);return norm(ev.title+' '+ev.venue+' '+ev.district+' '+(ev.town||'')+' '+CAT[ev.cat].name).includes(q)}
 function matchesPrefs(ev){
   const p=state.prefs;
   if(p.cats.length&&!inCats(ev,new Set(p.cats)))return false;
   if(p.freeOnly&&!ev.free)return false;
+  if(ev.town&&!p.towns)return false;
   if(p.slots.length&&ev.time&&!p.slots.includes(slotOf(ev.time)))return false;
   return true;
 }
 function score(ev){const p=state.prefs;let s=0;if(p.cats.length&&inCats(ev,new Set(p.cats)))s+=3;if(p.districts.includes(ev.district))s+=2;if(ev.free)s+=1;if(p.kids&&ev.kids)s+=2;if(state.saved.has(ev.id))s+=5;return s}
 function passCal(ev){
   const c=state.cal;
-  if(!matchQ(ev))return false;if(c.free&&!ev.free)return false;if(c.district&&ev.district!==c.district)return false;
+  if(!matchQ(ev))return false;if(c.free&&!ev.free)return false;if(ev.town&&!c.towns)return false;if(c.district&&ev.district!==c.district)return false;
   if(c.cats.size&&!inCats(ev,c.cats))return false;if(c.mine&&!matchesPrefs(ev))return false;return true;
 }
 const dayEvents=k=>(state.byDay.get(k)||[]);
@@ -473,8 +475,8 @@ function priceTag(ev){return ev.free?'<span class="tag free"><span class="ms">re
 function catVars(id){return`--bg:var(--cat-${id}-bg);--fg:var(--cat-${id}-fg)`}
 function evCard(ev,opts){
   opts=opts||{};const c=CAT[ev.cat];const sv=state.saved.has(ev.id);
-  const meta=[ev.time&&!opts.noTime?'<span class="t">'+esc(ev.time)+'</span>':'',opts.showDay?esc(cap(fmtShort.format(parseKey(opts.showDay)))):'',esc(ev.venue),ev.district&&!norm(ev.venue).includes(norm(ev.district))?esc(ev.district):''].filter(Boolean).join(' · ');
-  const tags=[priceTag(ev),ev.kids?'<span class="tag"><span class="ms">child_care</span>Con peques</span>':'',ev.sample?'<span class="tag ex">Ejemplo</span>':''].join('');
+  const meta=[ev.time&&!opts.noTime?'<span class="t">'+esc(ev.time)+'</span>':'',opts.showDay?esc(cap(fmtShort.format(parseKey(opts.showDay)))):'',esc(ev.venue),ev.town?esc(ev.town):(ev.district&&!norm(ev.venue).includes(norm(ev.district))?esc(ev.district):'')].filter(Boolean).join(' · ');
+  const tags=[priceTag(ev),ev.kids?'<span class="tag"><span class="ms">child_care</span>Con peques</span>':'',ev.source==='cam'?'<span class="tag">Comunidad</span>':'',ev.sample?'<span class="tag ex">Ejemplo</span>':''].join('');
   return`<article class="ev"><button class="ev-main" data-act="open" data-id="${esc(ev.id)}" data-k="${esc(opts.k||'')}"><span class="ev-ic" style="${catVars(ev.cat)}"><span class="ms">${c.icon}</span></span><span class="ev-body"><h3>${esc(ev.title)}</h3><p class="ev-meta">${meta}</p>${tags?'<span class="tags">'+tags+'</span>':''}</span></button><button class="icon-btn${sv?' on':''}" data-act="save" data-id="${esc(ev.id)}" aria-label="${sv?'Quitar de guardados':'Guardar'}" aria-pressed="${sv}"><span class="ms${sv?' fill':''}">bookmark</span></button></article>`;
 }
 
@@ -487,7 +489,7 @@ function renderBanner(){
     $('#status').textContent='Datos de ejemplo';return;
   }
   const days=Math.floor((Date.now()-d.generatedAt)/864e5);
-  $('#status').textContent='Agenda municipal · '+nf.format(d.count)+' actividades · actualizada '+(days<=0?'hoy':days===1?'ayer':'hace '+days+' días');
+  $('#status').textContent='Agenda de Madrid · '+nf.format(d.count)+' actividades · actualizada '+(days<=0?'hoy':days===1?'ayer':'hace '+days+' días');
   if(days>=3)b.innerHTML=`<div class="banner"><span class="ms">update</span><p><b>Los datos tienen ${days} días.</b> Puede que falten actividades nuevas.</p></div>`;
 }
 
@@ -557,7 +559,7 @@ function renderCal(){
   }
   const chip=(act,label,on,icon,extra)=>`<button class="chip${extra||''}" data-act="${act}" aria-pressed="${on}">${on?'<span class="ms">check</span>':(icon?`<span class="ms">${icon}</span>`:'')}${label}</button>`;
   const distSel=`<label class="chip" ${c.district?'aria-pressed="true"':''}><span class="ms">location_on</span><select id="caldist" aria-label="Distrito"><option value="">Todos los distritos</option>${DIST_LIST.map(d=>`<option${d===c.district?' selected':''}>${esc(d)}</option>`).join('')}</select></label>`;
-  const filters=`<div class="chips" role="toolbar" aria-label="Filtros">${chip('calmine','Mis intereses',c.mine,'auto_awesome')}${chip('calfree','Gratis',c.free,'redeem')}${distSel}${CATS.filter(x=>x.id!=='otros').map(x=>`<button class="chip cat" style="--c-bg:var(--cat-${x.id}-bg);--c-fg:var(--cat-${x.id}-fg)" data-act="calcat" data-c="${x.id}" aria-pressed="${c.cats.has(x.id)}"><span class="ms">${c.cats.has(x.id)?'check':x.icon}</span>${x.name}</button>`).join('')}</div>`;
+  const filters=`<div class="chips" role="toolbar" aria-label="Filtros">${chip('calmine','Mis intereses',c.mine,'auto_awesome')}${chip('calfree','Gratis',c.free,'redeem')}${chip('caltowns','Otros municipios',c.towns,'map')}${distSel}${CATS.filter(x=>x.id!=='otros').map(x=>`<button class="chip cat" style="--c-bg:var(--cat-${x.id}-bg);--c-fg:var(--cat-${x.id}-fg)" data-act="calcat" data-c="${x.id}" aria-pressed="${c.cats.has(x.id)}"><span class="ms">${c.cats.has(x.id)?'check':x.icon}</span>${x.name}</button>`).join('')}</div>`;
 
   // day list
   const sel=c.sel;const evs=dayEvents(sel).filter(passCal);
@@ -578,10 +580,10 @@ function renderPrefs(){
   const loaded=d.source==='oficial';
   $('#v-prefs').innerHTML=`
   <div class="pcard"><h2>Lo que te gusta</h2><p>Lo usaré para ordenar «Para ti». Si no eliges nada, te enseño de todo.</p><div class="chips wrap">${CATS.filter(c=>c.id!=='otros').map(c=>pc('pcat',c.id,c.name,p.cats.includes(c.id),c.icon,`--c-bg:var(--cat-${c.id}-bg);--c-fg:var(--cat-${c.id}-fg)`)).join('')}</div></div>
-  <div class="pcard"><h2>Tus barrios</h2><p>Los planes de estos distritos suben arriba y tienen su propia sección.</p><div class="chips wrap">${DIST_LIST.map(x=>pc('pdist',x,x,p.districts.includes(x),'location_on')).join('')}</div></div>
+  <div class="pcard"><h2>Tus barrios</h2><p>Los planes de estos distritos suben arriba y tienen su propia sección.</p><div class="chips wrap">${DIST_LIST.map(x=>pc('pdist',x,x,p.districts.includes(x),'location_on')).join('')}</div><div style="margin-top:12px"><label class="sw-row"><span><b>Planes en otros municipios</b><small>Getafe, Alcalá, la Sierra… de la agenda de la Comunidad</small></span><input type="checkbox" class="switch" id="ptowns"${p.towns?' checked':''}></label></div></div>
   <div class="pcard"><h2>Cuándo te viene bien</h2><p>Si eliges franjas, escondo lo que cae fuera.</p><div class="chips wrap">${SLOTS.map(s=>pc('pslot',s.id,s.name,p.slots.includes(s.id),s.icon)).join('')}</div>
     <div style="margin-top:12px"><label class="sw-row"><span><b>Solo planes gratis</b><small>Oculta lo que es de pago</small></span><input type="checkbox" class="switch" id="pfree"${p.freeOnly?' checked':''}></label><label class="sw-row"><span><b>Voy con peques</b><small>Prioriza actividades para familias</small></span><input type="checkbox" class="switch" id="pkids"${p.kids?' checked':''}></label></div></div>
-  <div class="pcard" id="datacard"><h2>De dónde salen los datos</h2><p>${loaded?`<b>${nf.format(d.count)}</b> actividades de los centros y espacios municipales.`:'Ahora mismo ves ejemplos.'} La agenda se descarga cada mañana del portal de datos abiertos del Ayuntamiento de Madrid.</p><div class="row"><a class="btn outlined" href="${DATASET_URL}" target="_blank" rel="noopener"><span class="ms">open_in_new</span>Ver el dataset</a></div></div>
+  <div class="pcard" id="datacard"><h2>De dónde salen los datos</h2><p>${loaded?`<b>${nf.format(d.count)}</b> actividades${d.sources?`: ${nf.format(d.sources.ayto)} del Ayuntamiento y ${nf.format(d.sources.cam)} de la Comunidad`:''}.`:'Ahora mismo ves ejemplos.'} Cada mañana se descarga la agenda de datos abiertos del Ayuntamiento y se leen las actividades nuevas que publica la Comunidad de Madrid.</p><div class="row"><a class="btn outlined" href="${DATASET_URL}" target="_blank" rel="noopener"><span class="ms">open_in_new</span>Ver el dataset</a></div></div>
   <div class="pcard"><h2>Guardados</h2><p>${state.saved.size?state.saved.size+' actividades guardadas en este navegador.':'Toca el marcador de cualquier plan para guardarlo.'}</p>${state.saved.size?'<button class="btn text" data-act="clearsaved">Vaciar guardados</button>':''}</div>`;
 }
 
@@ -606,9 +608,9 @@ function openSheet(id,k){
   const ev=state.map.get(id);if(!ev)return;const c=CAT[ev.cat];const sv=state.saved.has(ev.id);
   sheet.innerHTML=`<div class="sh"><div class="handle" aria-hidden="true"></div><div class="sh-top"><span class="catpill" style="${catVars(ev.cat)}"><span class="ms">${c.icon}</span>${c.name}</span><button class="icon-btn" data-act="close" aria-label="Cerrar"><span class="ms">close</span></button></div>
   <h2>${esc(ev.title)}</h2>
-  <dl class="facts"><div><span class="ms">event</span><dt>Cuándo</dt><dd>${esc(whenText(ev,k))}</dd></div><div><span class="ms">location_on</span><dt>Dónde</dt><dd>${esc(ev.venue)}${ev.district?'<br><span style="color:var(--on-surface-var)">'+esc(ev.district)+'</span>':''}</dd></div><div><span class="ms">sell</span><dt>Precio</dt><dd>${ev.free?'Gratis':esc(ev.price||'Consultar')}</dd></div>${ev.audience?`<div><span class="ms">group</span><dt>Público</dt><dd>${esc(ev.audience)}</dd></div>`:''}</dl>
+  <dl class="facts"><div><span class="ms">event</span><dt>Cuándo</dt><dd>${esc(whenText(ev,k))}</dd></div><div><span class="ms">location_on</span><dt>Dónde</dt><dd>${esc(ev.venue)}${(ev.address||ev.district||ev.town)?'<br><span style="color:var(--on-surface-var)">'+esc([ev.address,ev.town||ev.district].filter(Boolean).join(' · '))+'</span>':''}</dd></div><div><span class="ms">sell</span><dt>Precio</dt><dd>${ev.free?'Gratis':esc(ev.price||'Consultar')}</dd></div>${ev.audience?`<div><span class="ms">group</span><dt>Público</dt><dd>${esc(ev.audience)}</dd></div>`:''}${ev.sample?'':`<div><span class="ms">verified</span><dt>Fuente</dt><dd>${ev.source==='cam'?'Comunidad de Madrid':'Ayuntamiento de Madrid'}</dd></div>`}</dl>
   ${ev.desc?`<p class="desc">${esc(ev.desc)}</p>`:''}
-  <div class="row"><button class="btn filled" data-act="save" data-id="${esc(ev.id)}" data-insheet="1"><span class="ms${sv?' fill':''}">bookmark</span>${sv?'Guardado':'Guardar'}</button>${ev.link?`<a class="btn tonal" href="${esc(ev.link)}" target="_blank" rel="noopener"><span class="ms">open_in_new</span>Ver en madrid.es</a>`:''}<a class="btn outlined" href="${esc(mapLink(ev))}" target="_blank" rel="noopener"><span class="ms">directions</span>Cómo llegar</a><a class="btn outlined" href="${esc(gcalLink(ev,k))}" target="_blank" rel="noopener"><span class="ms">calendar_add_on</span>A mi calendario</a></div>
+  <div class="row"><button class="btn filled" data-act="save" data-id="${esc(ev.id)}" data-insheet="1"><span class="ms${sv?' fill':''}">bookmark</span>${sv?'Guardado':'Guardar'}</button>${ev.link?`<a class="btn tonal" href="${esc(ev.link)}" target="_blank" rel="noopener"><span class="ms">open_in_new</span>Ver ficha oficial</a>`:''}<a class="btn outlined" href="${esc(mapLink(ev))}" target="_blank" rel="noopener"><span class="ms">directions</span>Cómo llegar</a><a class="btn outlined" href="${esc(gcalLink(ev,k))}" target="_blank" rel="noopener"><span class="ms">calendar_add_on</span>A mi calendario</a></div>
   ${ev.sample?'<p class="desc" style="font-size:13px">Esta actividad es un ejemplo, no está en la agenda real.</p>':''}</div>`;
   sheet.dataset.id=id;sheet.dataset.k=k||'';
   if(!sheet.open){try{sheet.showModal()}catch(e){sheet.setAttribute('open','')}}
@@ -636,6 +638,7 @@ document.addEventListener('click',e=>{
     case'mprev':case'mnext':{const m=state.cal.month;state.cal.month=new Date(m.getFullYear(),m.getMonth()+(a==='mprev'?-1:1),1);renderCal();break}
     case'calmine':state.cal.mine=!state.cal.mine;renderCal();break;
     case'calfree':state.cal.free=!state.cal.free;renderCal();break;
+    case'caltowns':state.cal.towns=!state.cal.towns;renderCal();break;
     case'calcat':{const c=el.dataset.c;state.cal.cats.has(c)?state.cal.cats.delete(c):state.cal.cats.add(c);renderCal();break}
     case'pcat':tog(p.cats,el.dataset.val);savePrefs();renderPrefs();break;
     case'pdist':tog(p.districts,el.dataset.val);savePrefs();renderPrefs();break;
@@ -649,6 +652,7 @@ document.addEventListener('change',e=>{
   if(t.id==='caldist'){state.cal.district=t.value;renderCal()}
   else if(t.id==='pfree'){state.prefs.freeOnly=t.checked;savePrefs()}
   else if(t.id==='pkids'){state.prefs.kids=t.checked;savePrefs()}
+  else if(t.id==='ptowns'){state.prefs.towns=t.checked;state.cal.towns=t.checked;savePrefs()}
 });
 let qt;$('#q').addEventListener('input',e=>{clearTimeout(qt);qt=setTimeout(()=>{state.q=e.target.value.trim();$('#qclear').hidden=!state.q;state.expanded.clear();render()},140)});
 setEvents([]);render();loadData().then(render);
