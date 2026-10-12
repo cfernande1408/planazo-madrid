@@ -402,7 +402,7 @@ function setEvents(evs){
     const s=parseKey(ev.start),e=parseKey(ev.end||ev.start);
     if(e<t)continue;
     const span=(e-s)/864e5;
-    ev.long=!ev.days&&(!!ev.longHint||span>14);
+    ev.long=!!ev.longHint||(!ev.days&&span>14);
     if(ev.long){ongoing.push(ev);continue}
     const days=ev.days?new Set(ev.days):null;const excl=new Set(ev.excl||[]);
     const stop=e>horizon?horizon:e;
@@ -433,11 +433,17 @@ function passCal(ev){
   if(c.cats.size&&!inCats(ev,c.cats))return false;if(c.mine&&!matchesPrefs(ev))return false;return true;
 }
 const dayEvents=k=>(state.byDay.get(k)||[]);
-const ongoingOn=k=>state.ongoing.filter(e=>e.start<=k&&e.end>=k);
+const ongoingOn=k=>{const wd=parseKey(k).getDay();return state.ongoing.filter(e=>e.start<=k&&e.end>=k&&(!e.days||e.days.includes(wd))&&!(e.excl||[]).includes(k))};
 
 /* ---------- formatting ---------- */
+function daysText(days){
+  if(!days||days.length>=7)return'todos los días';
+  const missing=[0,1,2,3,4,5,6].filter(d=>!days.includes(d));
+  if(missing.length===1)return'cerrado los '+WD_NAME[missing[0]];
+  const names=days.map(d=>WD_NAME[d]);return names.length>1?names.slice(0,-1).join(', ')+' y '+names[names.length-1]:names[0];
+}
 function whenText(ev,k){
-  if(ev.long)return'Del '+fmtDM.format(parseKey(ev.start))+' al '+fmtDM.format(parseKey(ev.end));
+  if(ev.long)return'Del '+fmtDM.format(parseKey(ev.start))+' al '+fmtDM.format(parseKey(ev.end))+(ev.days?' · '+daysText(ev.days):'')+(ev.time?' · '+ev.time:'');
   if(ev.days){const names=ev.days.map(d=>WD_NAME[d]);const j=names.length>1?names.slice(0,-1).join(', ')+' y '+names[names.length-1]:names[0];return cap(j)+', hasta el '+fmtDM.format(parseKey(ev.end))+(ev.time?' · '+ev.time:'')}
   if(ev.start!==ev.end)return'Del '+fmtDM.format(parseKey(ev.start))+' al '+fmtDM.format(parseKey(ev.end))+(ev.time?' · '+ev.time:'');
   return cap(fmtLong.format(parseKey(k||ev.start)))+(ev.time?' · '+ev.time:'');
