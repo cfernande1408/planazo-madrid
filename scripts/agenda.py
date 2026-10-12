@@ -181,6 +181,19 @@ def coord(value: object) -> float | None:
     return round(x, 6)
 
 
+_EUR_RE = re.compile(r"(?:€|eur(?:os?)?)\s*(\d+(?:[.,]\d{1,2})?)\b|(\d+(?:[.,]\d{1,2})?)\s*(?:€|eur(?:os?)?\b)",
+                     re.I)
+
+
+def price_value(text: object) -> float | None:
+    """Primer importe en euros del texto («Entrada: 6 €, reducida 3 €» → 6.0)."""
+    m = _EUR_RE.search(str(text or ""))
+    if not m:
+        return None
+    value = float((m[1] or m[2]).replace(",", "."))
+    return value if value < 1000 else None
+
+
 def truthy(value: object) -> bool:
     return norm(value).strip() in TRUTHY or value is True
 
@@ -204,6 +217,7 @@ def make_event(*, id: str, title: str, type_: str, start: str, end: str, time: s
         "kids": cat == "peques" or bool(re.search(r"nin|famil|infan|bebe", norm(audience))),
         "free": bool(free),
         "price": clean_text(price, 120),
+        "eur": 0.0 if free else price_value(price),
         "start": start,
         "end": end if end >= start else start,
         "time": time,

@@ -148,6 +148,7 @@ main{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:0 120px}
 .stat{display:inline-flex;align-items:center;gap:6px;padding:6px 12px 6px 10px;border-radius:999px;background:var(--surface);color:var(--on-surface);font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums}
 .stat .ms{font-size:18px;color:var(--primary)}
 .hero{padding-bottom:0}
+.chips.budget{margin-top:12px}
 .hero > :not(svg){position:relative;z-index:1}
 .stars{position:absolute;top:18px;right:18px;width:58px;height:auto;fill:currentColor;opacity:.9}
 .skyline{display:block;width:calc(100% + 40px);height:auto;margin:6px -20px 0;color:var(--hero-fg)}
@@ -389,20 +390,24 @@ function examples(){
   out.push({id:'exl1',title:'Exposición: fotografía de barrio',desc:'Exposición de ejemplo.',cat:'expos',kids:false,free:true,price:'',start:k(-10),end:k(40),time:'',days:null,excl:[],venue:V.cd[0],district:V.cd[1],lat:null,lng:null,link:'',audience:'',sample:true});
   out.push({id:'exl2',title:'Exposición: carteles de cine madrileño',desc:'Exposición de ejemplo.',cat:'expos',kids:false,free:true,price:'',start:k(-5),end:k(60),time:'',days:null,excl:[],venue:V.mat[0],district:V.mat[1],lat:null,lng:null,link:'',audience:'',sample:true});
   out.push({id:'exl3',title:'Exposición: ilustración infantil',desc:'Exposición de ejemplo.',cat:'expos',kids:true,free:true,price:'',start:k(0),end:k(30),time:'',days:null,excl:[],venue:V.bib[0],district:V.bib[1],lat:null,lng:null,link:'',audience:'Familias',sample:true});
+  out.forEach(e=>{e.eur=e.free?0:(parseFloat(String(e.price).replace(',','.'))||null)});
   return out;
 }
 
 /* ---------- state ---------- */
-const P0={cats:[],districts:[],slots:[],freeOnly:false,kids:false,towns:false};
+const P0={cats:[],districts:[],slots:[],budget:null,kids:false,towns:false};
+const BUDGETS=[{v:0,label:'Gratis',icon:'redeem'},{v:10,label:'Hasta 10 €',icon:'euro'},{v:20,label:'Hasta 20 €',icon:'euro'},{v:30,label:'Hasta 30 €',icon:'euro'}];
 const state={
   view:'parati',q:'',
   prefs:Object.assign({},P0,store.get('planazo.prefs',{})),
   saved:new Set(store.get('planazo.saved',[])),
-  cal:{month:null,sel:null,mine:false,free:false,towns:false,district:'',cats:new Set()},
+  cal:{month:null,sel:null,mine:false,budget:null,towns:false,district:'',cats:new Set()},
   expanded:new Set(),
   data:{source:'cargando'},events:[],map:new Map(),byDay:new Map(),ongoing:[],maxKey:null
 };
+if(state.prefs.freeOnly){state.prefs.budget=0}delete state.prefs.freeOnly;
 state.cal.towns=!!state.prefs.towns;
+state.cal.budget=null;
 function savePrefs(){store.set('planazo.prefs',state.prefs)}
 function saveSaved(){store.set('planazo.saved',[...state.saved])}
 
@@ -441,10 +446,11 @@ function setEvents(evs){
 /* ---------- matching ---------- */
 function inCats(ev,set){return set.has(ev.cat)||(set.has('peques')&&ev.kids)}
 function matchQ(ev){if(!state.q)return true;const q=norm(state.q);return norm(ev.title+' '+ev.venue+' '+ev.district+' '+(ev.town||'')+' '+CAT[ev.cat].name).includes(q)}
+function budgetOk(ev,b){return b==null||ev.free||(ev.eur!=null&&ev.eur<=b)}
 function matchesPrefs(ev){
   const p=state.prefs;
   if(p.cats.length&&!inCats(ev,new Set(p.cats)))return false;
-  if(p.freeOnly&&!ev.free)return false;
+  if(!budgetOk(ev,p.budget))return false;
   if(ev.town&&!p.towns)return false;
   if(p.slots.length&&ev.time&&!p.slots.includes(slotOf(ev.time)))return false;
   return true;
@@ -452,7 +458,7 @@ function matchesPrefs(ev){
 function score(ev){const p=state.prefs;let s=0;if(p.cats.length&&inCats(ev,new Set(p.cats)))s+=3;if(p.districts.includes(ev.district))s+=2;if(ev.free)s+=1;if(p.kids&&ev.kids)s+=2;if(state.saved.has(ev.id))s+=5;return s}
 function passCal(ev){
   const c=state.cal;
-  if(!matchQ(ev))return false;if(c.free&&!ev.free)return false;if(ev.town&&!c.towns)return false;if(c.district&&ev.district!==c.district)return false;
+  if(!matchQ(ev))return false;if(!budgetOk(ev,c.budget))return false;if(ev.town&&!c.towns)return false;if(c.district&&ev.district!==c.district)return false;
   if(c.cats.size&&!inCats(ev,c.cats))return false;if(c.mine&&!matchesPrefs(ev))return false;return true;
 }
 const dayEvents=k=>(state.byDay.get(k)||[]);
@@ -471,7 +477,8 @@ function whenText(ev,k){
   if(ev.start!==ev.end)return'Del '+fmtDM.format(parseKey(ev.start))+' al '+fmtDM.format(parseKey(ev.end))+(ev.time?' · '+ev.time:'');
   return cap(fmtLong.format(parseKey(k||ev.start)))+(ev.time?' · '+ev.time:'');
 }
-function priceTag(ev){return ev.free?'<span class="tag free"><span class="ms">redeem</span>Gratis</span>':(ev.price?'<span class="tag">'+esc(ev.price.length>22?ev.price.slice(0,22)+'…':ev.price)+'</span>':'')}
+const fmtEur=v=>(Number.isInteger(v)?v:v.toFixed(2).replace('.',','))+' €';
+function priceTag(ev){return ev.free?'<span class="tag free"><span class="ms">redeem</span>Gratis</span>':ev.eur!=null?'<span class="tag">'+fmtEur(ev.eur)+'</span>':(ev.price?'<span class="tag">'+esc(ev.price.length>22?ev.price.slice(0,22)+'…':ev.price)+'</span>':'')}
 function catVars(id){return`--bg:var(--cat-${id}-bg);--fg:var(--cat-${id}-fg)`}
 function evCard(ev,opts){
   opts=opts||{};const c=CAT[ev.cat];const sv=state.saved.has(ev.id);
@@ -503,16 +510,17 @@ function section(id,title,sub,items,opts){
 function rankDay(k,shown){
   return dayEvents(k).filter(e=>!shown.has(e.id)&&matchQ(e)&&matchesPrefs(e)).sort((a,b)=>score(b)-score(a)||(a.time||'99').localeCompare(b.time||'99'));
 }
+function budgetChips(act,cur){return BUDGETS.map(b=>`<button class="chip" data-act="${act}" data-v="${b.v}" aria-pressed="${cur===b.v}"><span class="ms">${cur===b.v?'check':b.icon}</span>${b.label}</button>`).join('')}
 function renderParaTi(){
   const t=today0();const tk=keyOf(t);const p=state.prefs;
   const todayAll=dayEvents(tk).filter(matchQ);
   const todayMine=todayAll.filter(matchesPrefs);
   const freeToday=todayMine.filter(e=>e.free).length;
-  const hasPrefs=p.cats.length||p.districts.length||p.slots.length||p.freeOnly||p.kids;
+  const hasPrefs=p.cats.length||p.districts.length||p.slots.length||p.budget!=null||p.kids;
   let h=`<div class="hero">${STARS}
     <span class="eyebrow">${esc(fmtLong.format(t))}</span>
     <h2>${state.q?'Resultados para «'+esc(state.q)+'»':(hasPrefs?'Tus planes en Madrid':'Qué pasa hoy en Madrid')}</h2>
-    <div class="stats"><span class="stat"><span class="ms">event</span>${nf.format(todayMine.length)} planes hoy</span><span class="stat"><span class="ms">redeem</span>${nf.format(freeToday)} gratis</span>${state.saved.size?`<span class="stat"><span class="ms fill">bookmark</span>${state.saved.size} guardados</span>`:''}</div>${SKYLINE}</div>`;
+    <div class="stats"><span class="stat"><span class="ms">event</span>${nf.format(todayMine.length)} planes hoy</span><span class="stat"><span class="ms">redeem</span>${nf.format(freeToday)} gratis</span>${state.saved.size?`<span class="stat"><span class="ms fill">bookmark</span>${state.saved.size} guardados</span>`:''}</div>${SKYLINE}</div><div class="chips budget" role="toolbar" aria-label="Presupuesto">${budgetChips('pbudget',p.budget)}</div>`;
   if(!hasPrefs&&!state.q){h+=`<div class="sec"><div class="banner"><span class="ms">tune</span><p><b>Dime qué te gusta</b> y ordeno la agenda por ti: tipos de plan, tus barrios y a qué hora te viene bien.</p><button class="btn tonal" data-act="view" data-v="prefs">Elegir</button></div></div>`}
 
   // saved upcoming
@@ -559,7 +567,7 @@ function renderCal(){
   }
   const chip=(act,label,on,icon,extra)=>`<button class="chip${extra||''}" data-act="${act}" aria-pressed="${on}">${on?'<span class="ms">check</span>':(icon?`<span class="ms">${icon}</span>`:'')}${label}</button>`;
   const distSel=`<label class="chip" ${c.district?'aria-pressed="true"':''}><span class="ms">location_on</span><select id="caldist" aria-label="Distrito"><option value="">Todos los distritos</option>${DIST_LIST.map(d=>`<option${d===c.district?' selected':''}>${esc(d)}</option>`).join('')}</select></label>`;
-  const filters=`<div class="chips" role="toolbar" aria-label="Filtros">${chip('calmine','Mis intereses',c.mine,'auto_awesome')}${chip('calfree','Gratis',c.free,'redeem')}${chip('caltowns','Otros municipios',c.towns,'map')}${distSel}${CATS.filter(x=>x.id!=='otros').map(x=>`<button class="chip cat" style="--c-bg:var(--cat-${x.id}-bg);--c-fg:var(--cat-${x.id}-fg)" data-act="calcat" data-c="${x.id}" aria-pressed="${c.cats.has(x.id)}"><span class="ms">${c.cats.has(x.id)?'check':x.icon}</span>${x.name}</button>`).join('')}</div>`;
+  const filters=`<div class="chips" role="toolbar" aria-label="Filtros">${chip('calmine','Mis intereses',c.mine,'auto_awesome')}${budgetChips('calbudget',c.budget)}${chip('caltowns','Otros municipios',c.towns,'map')}${distSel}${CATS.filter(x=>x.id!=='otros').map(x=>`<button class="chip cat" style="--c-bg:var(--cat-${x.id}-bg);--c-fg:var(--cat-${x.id}-fg)" data-act="calcat" data-c="${x.id}" aria-pressed="${c.cats.has(x.id)}"><span class="ms">${c.cats.has(x.id)?'check':x.icon}</span>${x.name}</button>`).join('')}</div>`;
 
   // day list
   const sel=c.sel;const evs=dayEvents(sel).filter(passCal);
@@ -581,8 +589,9 @@ function renderPrefs(){
   $('#v-prefs').innerHTML=`
   <div class="pcard"><h2>Lo que te gusta</h2><p>Lo usaré para ordenar «Para ti». Si no eliges nada, te enseño de todo.</p><div class="chips wrap">${CATS.filter(c=>c.id!=='otros').map(c=>pc('pcat',c.id,c.name,p.cats.includes(c.id),c.icon,`--c-bg:var(--cat-${c.id}-bg);--c-fg:var(--cat-${c.id}-fg)`)).join('')}</div></div>
   <div class="pcard"><h2>Tus barrios</h2><p>Los planes de estos distritos suben arriba y tienen su propia sección.</p><div class="chips wrap">${DIST_LIST.map(x=>pc('pdist',x,x,p.districts.includes(x),'location_on')).join('')}</div><div style="margin-top:12px"><label class="sw-row"><span><b>Planes en otros municipios</b><small>Getafe, Alcalá, la Sierra… de la agenda de la Comunidad</small></span><input type="checkbox" class="switch" id="ptowns"${p.towns?' checked':''}></label></div></div>
+  <div class="pcard"><h2>Presupuesto</h2><p>Lo que pase de ahí no te lo enseño. Las actividades sin precio conocido se ocultan al filtrar.</p><div class="chips wrap">${budgetChips('pbudget',p.budget)}</div></div>
   <div class="pcard"><h2>Cuándo te viene bien</h2><p>Si eliges franjas, escondo lo que cae fuera.</p><div class="chips wrap">${SLOTS.map(s=>pc('pslot',s.id,s.name,p.slots.includes(s.id),s.icon)).join('')}</div>
-    <div style="margin-top:12px"><label class="sw-row"><span><b>Solo planes gratis</b><small>Oculta lo que es de pago</small></span><input type="checkbox" class="switch" id="pfree"${p.freeOnly?' checked':''}></label><label class="sw-row"><span><b>Voy con peques</b><small>Prioriza actividades para familias</small></span><input type="checkbox" class="switch" id="pkids"${p.kids?' checked':''}></label></div></div>
+    <div style="margin-top:12px"><label class="sw-row"><span><b>Voy con peques</b><small>Prioriza actividades para familias</small></span><input type="checkbox" class="switch" id="pkids"${p.kids?' checked':''}></label></div></div>
   <div class="pcard" id="datacard"><h2>De dónde salen los datos</h2><p>${loaded?`<b>${nf.format(d.count)}</b> actividades${d.sources?`: ${nf.format(d.sources.ayto)} del Ayuntamiento y ${nf.format(d.sources.cam)} de la Comunidad`:''}.`:'Ahora mismo ves ejemplos.'} Cada mañana se descarga la agenda de datos abiertos del Ayuntamiento y se leen las actividades nuevas que publica la Comunidad de Madrid.</p><div class="row"><a class="btn outlined" href="${DATASET_URL}" target="_blank" rel="noopener"><span class="ms">open_in_new</span>Ver el dataset</a></div></div>
   <div class="pcard"><h2>Guardados</h2><p>${state.saved.size?state.saved.size+' actividades guardadas en este navegador.':'Toca el marcador de cualquier plan para guardarlo.'}</p>${state.saved.size?'<button class="btn text" data-act="clearsaved">Vaciar guardados</button>':''}</div>`;
 }
@@ -637,7 +646,8 @@ document.addEventListener('click',e=>{
     case'day':state.cal.sel=el.dataset.k;renderCal();if(window.innerWidth<900){const dl=$('#daylist');if(dl)dl.scrollIntoView({block:'start',behavior:'smooth'})}break;
     case'mprev':case'mnext':{const m=state.cal.month;state.cal.month=new Date(m.getFullYear(),m.getMonth()+(a==='mprev'?-1:1),1);renderCal();break}
     case'calmine':state.cal.mine=!state.cal.mine;renderCal();break;
-    case'calfree':state.cal.free=!state.cal.free;renderCal();break;
+    case'calbudget':{const v=+el.dataset.v;state.cal.budget=state.cal.budget===v?null:v;renderCal();break}
+    case'pbudget':{const v=+el.dataset.v;state.prefs.budget=state.prefs.budget===v?null:v;savePrefs();state.expanded.clear();state.view==='prefs'?renderPrefs():renderParaTi();break}
     case'caltowns':state.cal.towns=!state.cal.towns;renderCal();break;
     case'calcat':{const c=el.dataset.c;state.cal.cats.has(c)?state.cal.cats.delete(c):state.cal.cats.add(c);renderCal();break}
     case'pcat':tog(p.cats,el.dataset.val);savePrefs();renderPrefs();break;
@@ -650,7 +660,6 @@ document.addEventListener('click',e=>{
 document.addEventListener('change',e=>{
   const t=e.target;
   if(t.id==='caldist'){state.cal.district=t.value;renderCal()}
-  else if(t.id==='pfree'){state.prefs.freeOnly=t.checked;savePrefs()}
   else if(t.id==='pkids'){state.prefs.kids=t.checked;savePrefs()}
   else if(t.id==='ptowns'){state.prefs.towns=t.checked;state.cal.towns=t.checked;savePrefs()}
 });

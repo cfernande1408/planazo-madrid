@@ -89,6 +89,13 @@ class HelpersTest(unittest.TestCase):
         self.assertEqual(agenda.clean_audience("Niños,Familias"), "Niños, Familias")
         self.assertEqual(agenda.clean_audience(""), "")
 
+    def test_price_value(self):
+        cases = {"6 €": 6.0, "Entrada: 3 euros, reducida 1,50 €": 3.0, "12,50€": 12.5,
+                 "€ 8": 8.0, "Precio: 15 EUR": 15.0, "Consultar": None, "": None,
+                 "Aforo 120 personas": None}
+        for text, expected in cases.items():
+            self.assertEqual(agenda.price_value(text), expected, text)
+
     def test_dates_and_times(self):
         self.assertEqual(agenda.date_key("2026-10-14 00:00:00.0"), "2026-10-14")
         self.assertEqual(agenda.date_keys("20/10/2026;2026-10-27"), ["2026-10-20", "2026-10-27"])
@@ -116,6 +123,7 @@ class CsvTest(unittest.TestCase):
         self.assertEqual(ev["cat"], "musica")
         self.assertEqual(ev["district"], "Latina")
         self.assertTrue(ev["free"])
+        self.assertEqual(ev["eur"], 0.0)
         self.assertEqual((ev["start"], ev["end"], ev["time"]), ("2026-10-14", "2026-10-14", "19:00"))
         self.assertEqual((ev["lat"], ev["lng"]), (40.4031, -3.7392))
         self.assertEqual(ev["desc"], "Primera línea\nSegunda línea")
@@ -123,6 +131,7 @@ class CsvTest(unittest.TestCase):
 
     def test_recurrence_and_exclusions(self):
         ev = self.by_title["Taller de cerámica"][0]
+        self.assertEqual(ev["eur"], 6.0)
         self.assertEqual(ev["cat"], "talleres")
         self.assertEqual(ev["days"], [1, 3])
         self.assertEqual(ev["excl"], ["2026-10-20"])
@@ -198,7 +207,7 @@ class MergeTest(unittest.TestCase):
 
 class AppContractTest(unittest.TestCase):
     """Las claves que lee site/index.html."""
-    KEYS = {"id", "title", "desc", "cat", "kids", "free", "price", "start", "end", "time",
+    KEYS = {"id", "title", "desc", "cat", "kids", "free", "price", "eur", "start", "end", "time",
             "days", "excl", "venue", "district", "lat", "lng", "link", "audience"}
     CATS = {c for c, _ in agenda.CATEGORIES} | {"otros"}
 

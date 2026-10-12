@@ -146,6 +146,7 @@ class PageTest(unittest.TestCase):
         self.assertFalse(ev["kids"], "ni la descripción ni los relacionados cuentan")
         self.assertFalse(ev["free"])
         self.assertEqual(ev["price"], "Entrada: 3 euros, reducida 1,50 €")
+        self.assertEqual(ev["eur"], 3.0)
 
     def test_single_line_range(self):
         html = EXPO.replace("<time>Viernes, 20 Nov 2026 | 10:00</time><span>-</span><time>Viernes, 22 Ene 2027 | 21:30</time>",
